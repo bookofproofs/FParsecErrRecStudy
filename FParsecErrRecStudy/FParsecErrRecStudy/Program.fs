@@ -44,7 +44,7 @@ let escapeEitherOr =
 /// while being in the context of eitherOr.
 let eitherOr = many (choice [ stringValue ; intValue ; escapeEitherOr ]) |>> SyntaxNode.ManyEitherOr
 
-/// Global parser that wants to consume everything until and of file
+/// Global parser that wants to consume everything until the end of file
 let parser = eitherOr .>> eof
 
 /// Emit any errors occurring in the globalParser

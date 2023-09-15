@@ -6,6 +6,9 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Include="TheParserTypes.fs" />
+    <Compile Include="ErrRecovery.fs" />
+    <Compile Include="ParserExamples.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
 

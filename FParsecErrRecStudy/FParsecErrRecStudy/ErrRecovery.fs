@@ -19,6 +19,8 @@ type Diagnostics () =
 let ad = Diagnostics() 
 
 /// Emit any errors occurring in the globalParser
+/// This is to make sure that the parser will always emit diagnostics, 
+/// even if the error recovery fails on a global level (and so does the parser).
 let tryParse globalParser expectMessage (ad:Diagnostics) input = 
     match run globalParser input with
     | Success(result, restInput, userState) -> 

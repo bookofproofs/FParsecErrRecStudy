@@ -18,17 +18,8 @@ type Diagnostics () =
 
 let ad = Diagnostics() 
 
-/// A helper function to emitDiagnostics in the current user state and position.
-let emitDiagnostics (ad:Diagnostics) escapeParser msg = 
-    let errorMsg = DiagnosticMessage msg
-    getPosition >>= fun pos -> 
-        let diagnostic = Diagnostic (DiagnosticEmitter.Parser, DiagnosticSeverity.Error,pos,errorMsg)
-        ad.AddDiagnostic diagnostic
-        preturn ()
-    escapeParser |>> SyntaxNode.Escape
-
 /// Emit any errors occurring in the globalParser
-let tryParse globalParser input expectMessage (ad:Diagnostics) = 
+let tryParse globalParser expectMessage (ad:Diagnostics) input = 
     match run globalParser input with
     | Success(result, restInput, userState) -> 
         result 
@@ -37,3 +28,41 @@ let tryParse globalParser input expectMessage (ad:Diagnostics) =
         let diagnostic = Diagnostic (DiagnosticEmitter.Parser, DiagnosticSeverity.Error,restInput.Position,diagnosticMsg)
         ad.AddDiagnostic diagnostic
         SyntaxNode.Error
+
+/// A helper function to emitDiagnostics in the current user state and position.
+let emitDiagnostics (ad:Diagnostics) escapeParser msg = 
+    let errorMsg = DiagnosticMessage msg
+    getPosition >>= fun pos -> 
+        let diagnostic = Diagnostic (DiagnosticEmitter.Parser, DiagnosticSeverity.Error,pos,errorMsg)
+        ad.AddDiagnostic diagnostic
+        preturn ()
+    escapeParser >>% SyntaxNode.Escape
+
+
+
+/// Similar to tryParse but instead of applying the 'run p input', it will 
+/// return a lambda function that takes an 'input' and applies 'run p' on it.
+/// Useful when you want to tryParse parsers that are not the entry point parser.
+let tryParseCurrying p msg (ad:Diagnostics) = 
+    fun input ->
+        match run p input with
+        | Success(result, restInput, userState) -> 
+            result 
+        | Failure(errorMsg, restInput, _) -> 
+            let diagnosticMsg = DiagnosticMessage (msg + " " + errorMsg)
+            let diagnostic = Diagnostic (DiagnosticEmitter.Parser, DiagnosticSeverity.Error,restInput.Position,diagnosticMsg)
+            ad.AddDiagnostic diagnostic
+            SyntaxNode.Error
+
+
+let tryParseOther p msg (ad:Diagnostics) = 
+    fun input ->
+        match run p input with
+        | Success(result, restInput, userState) -> result
+        | Failure(errorMsg, restInput, _) -> 
+            let diagnosticMsg = DiagnosticMessage (msg + " " + errorMsg)
+            let diagnostic = Diagnostic (DiagnosticEmitter.Parser, DiagnosticSeverity.Error,restInput.Position,diagnosticMsg)
+            ad.AddDiagnostic diagnostic
+            preturn SyntaxNode.Error
+
+

@@ -3,33 +3,25 @@ open FParsec
 open TheParserTypes
 open ErrRecovery
 
+
+//begin run {a,b,c };run{a, b,c} end beg in run{a,b,c}; run{a,b} end 
+
 // Parsers
 
-let intValue = pint64 .>> spaces |>> SyntaxNode.Int
-let stringValue = pstring "ab" .>> spaces |>> SyntaxNode.String
-
-/// Performs many choices of eitherOr and escapes any errors occurring 
-/// while being in the context of eitherOr.
-let leftBrace: Parser<_, unit> = skipChar '{'
-let rightBrace: Parser<_, unit>  = skipChar '}'
-
-let eitherOrEscape = 
-    emitDiagnostics ad (skipAnyOf " ") "expected EitherOr"
-// let eitherOrEscape = (skipAnyOf " ") |>> SyntaxNode.Escape
-let eitherOr = choice [ stringValue ; intValue ; eitherOrEscape ]
-let eitherOrList = many eitherOr |>> SyntaxNode.ManyEitherOr
-
-/// A first final parser that consumes everything until the end of file
-let firstParserExample = eitherOrList .>> eof
-
-let keyword: Parser<_, unit> = skipString "run" 
-
-let namedBlockEscape = 
-    emitDiagnostics ad (skipAnyOf " \t\n\r}") "expected namedBlock"
-
-let namedBlock = (keyword >>. spaces >>. leftBrace >>. spaces >>. eitherOrList) .>> (spaces >>. rightBrace >>. spaces) |>> SyntaxNode.NamedBlock
-let namedBlockList = many (spaces >>. (namedBlock <|> namedBlockEscape) .>> spaces) |>> SyntaxNode.NamedBlockList
-
-let secondParserExample = namedBlockList .>> eof
-
+let a = skipChar 'a' .>> spaces >>% SyntaxNode.A
+let b = skipChar 'b' .>> spaces >>% SyntaxNode.B
+let c = skipChar 'c' .>> spaces >>% SyntaxNode.C
+let comma = skipChar ',' .>> spaces
+let charChoice = choice [a;b;c] .>> spaces
+let charSequence = sepBy charChoice comma |>> SyntaxNode.Sequence 
+let leftBrace: Parser<_, unit> = skipChar '{' >>. spaces
+let rightBrace: Parser<_, unit>  = skipChar '}' >>. spaces
+let runBlock = (skipString "run" >>. spaces >>. leftBrace >>. spaces >>. charSequence .>> spaces) .>> rightBrace .>> spaces |>> SyntaxNode.Run
+let semicolon = skipChar ';' .>> spaces
+let runSequence = sepBy runBlock semicolon |>> SyntaxNode.RunSequence
+let pBegin = skipString "begin" >>. spaces 
+let pEnd = skipString "end" >>. spaces 
+let beginEndBlock = pBegin >>. runSequence .>> pEnd .>> spaces |>> SyntaxNode.Block
+let blockSequence = many1 beginEndBlock
+let globalParser = blockSequence .>> eof |>> SyntaxNode.Ast
 

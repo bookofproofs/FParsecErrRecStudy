@@ -1,10 +1,13 @@
 ﻿module TheParserTypes
 
 type SyntaxNode = 
+    | A 
+    | B 
+    | C 
+    | Sequence of SyntaxNode list
+    | Run of SyntaxNode 
+    | RunSequence of SyntaxNode list
+    | Block of SyntaxNode 
+    | Ast of SyntaxNode list
+    | Escape
     | Error
-    | String of string
-    | Int of int64
-    | Escape of unit
-    | ManyEitherOr of SyntaxNode list
-    | NamedBlock of SyntaxNode
-    | NamedBlockList  of SyntaxNode list

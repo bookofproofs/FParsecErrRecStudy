@@ -13,7 +13,7 @@ type Diagnostics () =
     member this.AddDiagnostic d = myList.Add(d)
     member this.PrintDiagnostics = 
         for d in myList do printfn "%O" d
-        printfn "%s" 
+        printfn "%s" "^------------------------^\n" 
     member this.DiagnosticsToString = 
         myList
         |> Seq.map string
@@ -38,11 +38,14 @@ let tryParse globalParser expectMessage (ad:Diagnostics) input =
 /// A helper function to emitDiagnostics in the current user state and position.
 let emitDiagnostics (ad:Diagnostics) escapeParser msg = 
     let errorMsg = DiagnosticMessage msg
-    getPosition >>= fun pos -> 
-        let diagnostic = Diagnostic (DiagnosticEmitter.Parser, DiagnosticSeverity.Error,pos,errorMsg)
-        ad.AddDiagnostic diagnostic
-        preturn ()
-    escapeParser >>% SyntaxNode.Escape
+    let positionedEscapeParser = 
+        getPosition .>>. escapeParser
+        |>> fun (pos, escape) -> (pos, escape)
+    positionedEscapeParser >>= fun (pos, escape) ->
+    let diagnostic = Diagnostic (DiagnosticEmitter.Parser, DiagnosticSeverity.Error,pos,errorMsg)
+    ad.AddDiagnostic diagnostic
+    preturn () >>% SyntaxNode.Escape
+    
 
 
 

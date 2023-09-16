@@ -13,7 +13,11 @@ type Diagnostics () =
     member this.AddDiagnostic d = myList.Add(d)
     member this.PrintDiagnostics = 
         for d in myList do printfn "%O" d
-        printfn "%s" "\n------------------------------\n"
+        printfn "%s" 
+    member this.DiagnosticsToString = 
+        myList
+        |> Seq.map string
+        |> String.concat "\n"
     member this.Clear = myList.Clear
 
 let ad = Diagnostics() 

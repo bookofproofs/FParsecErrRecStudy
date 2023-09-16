@@ -31,3 +31,21 @@ type TestErrRecovery () =
   [Block (RunSequence [Run (Sequence [A; C]); Run (Sequence [A; B])]);
    Block (RunSequence [Run (Sequence [A; B; C]); Run (Sequence [A; B])])]"""
         Assert.AreEqual(replaceWhiteSpace expected, replaceWhiteSpace actual);
+
+    [<TestMethod>]
+    member this.TestTryParseError () =
+        let input = "begin run {a,c };run{a, b} end xxxbegin run{a,b,c}; run{a,b} end "
+        let result = tryParse globalParser "parser could not recover from errors;" ad input
+        let actual = sprintf "%O" result
+        let expected = """Error"""
+        Assert.AreEqual(replaceWhiteSpace expected, replaceWhiteSpace actual);
+        let actualDiags = ad.DiagnosticsToString
+        let expectedDiags = """Diagnostic
+  (Parser, Error, (Ln: 1, Col: 32),
+   DiagnosticMessage
+     "parser could not recover from errors; Error in Ln: 1 Col: 32
+begin run {a,c };run{a, b} end xxxbegin run{a,b,c}; run{a,b} end 
+                               ^
+Expecting: end of input or 'begin'
+")"""
+        Assert.AreEqual(replaceWhiteSpace expectedDiags, replaceWhiteSpace actualDiags)

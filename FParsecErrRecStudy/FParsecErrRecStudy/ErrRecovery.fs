@@ -3,7 +3,9 @@ open System.Collections.Generic
 open FParsec
 open TheParserTypes
 
-type DiagnosticEmitter = Parser | Interpreter
+(* MIT License Copyright (c) 2023 bookofproofs, for full license text, see LICENSE.md contained in this repository. *)
+
+type DiagnosticEmitter = Parser | Interpreter 
 type DiagnosticSeverity = Error | Warning | Severity | Hint 
 type DiagnosticMessage = DiagnosticMessage of string
 type Diagnostic = Diagnostic of DiagnosticEmitter * DiagnosticSeverity * Position * DiagnosticMessage
@@ -33,9 +35,12 @@ let tryParse globalParser expectMessage (ad:Diagnostics) input =
         let diagnosticMsg = DiagnosticMessage (expectMessage + " " + errorMsg)
         let diagnostic = Diagnostic (DiagnosticEmitter.Parser, DiagnosticSeverity.Error,restInput.Position,diagnosticMsg)
         ad.AddDiagnostic diagnostic
-        SyntaxNode.Error
+        Ast.Error
 
-/// A helper function to emitDiagnostics in the current user state and position.
+/// A helper parser applying the escapeParser to the input and emitting a diagnostic 
+/// a the current parsing position with a user-defined error message 
+/// explaining why this diagnostic was generated. 
+/// An Ast.Escape node is returned as a placeholder for the part of Ast that the parser failed to generate. 
 let emitDiagnostics (ad:Diagnostics) escapeParser msg = 
     let errorMsg = DiagnosticMessage msg
     let positionedEscapeParser = 
@@ -44,7 +49,7 @@ let emitDiagnostics (ad:Diagnostics) escapeParser msg =
     positionedEscapeParser >>= fun (pos, escape) ->
     let diagnostic = Diagnostic (DiagnosticEmitter.Parser, DiagnosticSeverity.Error,pos,errorMsg)
     ad.AddDiagnostic diagnostic
-    preturn () >>% SyntaxNode.Escape
+    preturn () >>% Ast.Escape
     
 /// A helper parser that skips any characters until innerSeparator would succeed,
 /// but where innerSeparator does not consume any input.
@@ -70,7 +75,7 @@ let tryParseCurrying p msg (ad:Diagnostics) =
             let diagnosticMsg = DiagnosticMessage (msg + " " + errorMsg)
             let diagnostic = Diagnostic (DiagnosticEmitter.Parser, DiagnosticSeverity.Error,restInput.Position,diagnosticMsg)
             ad.AddDiagnostic diagnostic
-            SyntaxNode.Error
+            Ast.Error
 
 
 let tryParseOther p msg (ad:Diagnostics) = 
@@ -81,6 +86,6 @@ let tryParseOther p msg (ad:Diagnostics) =
             let diagnosticMsg = DiagnosticMessage (msg + " " + errorMsg)
             let diagnostic = Diagnostic (DiagnosticEmitter.Parser, DiagnosticSeverity.Error,restInput.Position,diagnosticMsg)
             ad.AddDiagnostic diagnostic
-            preturn SyntaxNode.Error
+            preturn Ast.Error
 
 

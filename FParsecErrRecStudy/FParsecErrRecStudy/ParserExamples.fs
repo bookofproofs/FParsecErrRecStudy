@@ -16,8 +16,8 @@ let comma = skipChar ',' .>> spaces
 // original parser
 // let charChoice = choice [a;b;c] .>> spaces
 // modifications adding error recovery to charChoice:
-let charChoiceEscapeCondition c = not (List.contains c [',']) 
-let charChoiceErrRec = emitDiagnostics ad (skipManySatisfy charChoiceEscapeCondition) "charChoice a|b|c expected" 
+let charChoiceBreakCondition = skipUntilLookaheadSeparator comma
+let charChoiceErrRec = emitDiagnostics ad charChoiceBreakCondition "charChoice a|b|c expected" 
 let charChoice = choice [a;b;c;charChoiceErrRec] .>> spaces
 
 let charSequence = sepBy charChoice comma |>> SyntaxNode.Sequence 

@@ -46,8 +46,10 @@ let emitDiagnostics (ad:Diagnostics) escapeParser msg =
     ad.AddDiagnostic diagnostic
     preturn () >>% SyntaxNode.Escape
     
-
-
+/// A helper parser that skips any characters until someSeparator would succeed,
+/// but where someSeparator does not consume any input.
+let skipUntilLookaheadSeparator someSeparator = 
+    skipMany (notFollowedBy someSeparator >>. anyChar)
 
 /// Similar to tryParse but instead of applying the 'run p input', it will 
 /// return a lambda function that takes an 'input' and applies 'run p' on it.

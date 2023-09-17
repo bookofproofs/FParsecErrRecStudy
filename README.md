@@ -4,7 +4,9 @@ A study of error recovery and how it could be done with FParsec.
 
 
 ## Goal of this study
-To add error recovery to a more complex grammar that would recover from errors occuring in many contexts.
+To add error recovery to a more complex grammar that would recover from errors occurring in many contexts.
+In particular, we would like to return at least a partial AST where our parser can succeed in error recovery and emit diagnostics depending on the context in which the error recovery did succeed.
+Only a the case none of our context-related error recovery attempts succeed, our partial AST would be replaced by a single ERROR node, while still emitting diagnostics why this happened.
 
 ## Example grammar 
 The grammar we want to parse is (in ebnf)
@@ -75,5 +77,5 @@ let globalParser = blockSequence .>> eof |>> SyntaxNode.Ast
 Note that we have different contexts in which we would like to add error recovery:
 * **charSequence embedded in runBlock**: What if we have a comma-separated sequence of characters, some of which do not match a|b|c, but still end with "}"
 * **runBlockSequence embedded in beginEndBlock**: What if we have a semicolon-separated sequence of runBlocks, some of which do not match runBlock, but still end with pEnd?
-** **beginEndBlock embedded in blockSequence**: What if we have a whitespace-separated sequence of beginEndBlocks, some of which do not match the parser beginEndBlock, but still end with eof?
+* **beginEndBlock embedded in blockSequence**: What if we have a whitespace-separated sequence of beginEndBlocks, some of which do not match the parser beginEndBlock, but still end with eof?
 

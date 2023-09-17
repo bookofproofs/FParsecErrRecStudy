@@ -82,3 +82,29 @@ Expecting: end of input or 'begin'
   (Parser, Error, (Ln: 1, Col: 16),
    DiagnosticMessage "charChoice a|b|c expected")"""
         Assert.AreEqual(replaceWhiteSpace expectedDiags, replaceWhiteSpace actualDiags)
+
+
+    [<TestMethod>]
+    member this.TestTryParseError02 () =
+        // in this test, we run the parser on an syntactically incorrect input 
+        // from which the parser can recover
+        //, return an AST that should be an AST with some escape nodes, 
+        // and we expect a diagnostic saying why and where there were escape nodes
+        ad.Clear()
+        let input = "begin run {a,c,d,a, };run{a, b} end begin run{a,b,c}; run{a,b} end "
+        let result = tryParse globalParser "parser could not recover from errors;" ad input
+        let actual = sprintf "%O" result
+        let expected = """Ast
+  [Block
+     (RunSequence
+        [Run (Sequence [A; C; Escape; A; Escape]); Run (Sequence [A; B])]);
+   Block (RunSequence [Run (Sequence [A; B; C]); Run (Sequence [A; B])])]"""
+        Assert.AreEqual(replaceWhiteSpace expected, replaceWhiteSpace actual);
+        let actualDiags = ad.DiagnosticsToString
+        let expectedDiags = """Diagnostic
+  (Parser, Error, (Ln: 1, Col: 16),
+   DiagnosticMessage "charChoice a|b|c expected")
+Diagnostic
+  (Parser, Error, (Ln: 1, Col: 21),
+   DiagnosticMessage "charChoice a|b|c expected")"""
+        Assert.AreEqual(replaceWhiteSpace expectedDiags, replaceWhiteSpace actualDiags)

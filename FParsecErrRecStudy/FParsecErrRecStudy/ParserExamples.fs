@@ -27,15 +27,18 @@ let charChoiceBreakCondition = skipUntilLookaheadSeparatorFail comma rightBrace
 let charChoiceErrRec = emitDiagnostics ad charChoiceBreakCondition "charChoice a|b|c expected" 
 let charSequence = sepBy (charChoice <|> charChoiceErrRec) comma |>> Ast.Sequence // injection of charChoiceErrRec in choice
 
-let runBlock = (pRun >>. leftBrace >>. spaces >>. charSequence .>> spaces) .>> rightBrace .>> spaces |>> Ast.Run
+let runBlock = (pRun >>. leftBrace >>. charSequence) .>> rightBrace |>> Ast.Run
 // original parser
 // let runSequence = sepBy runBlock semicolon |>> Ast.RunSequence 
 // modifications adding error recovery to runSequence:
+let runBlockMissingSomething = pRun >>. abc leftBrace charSequence rightBrace "{" "charSequence" "}" ad
 let runBlockBreakCondition = skipUntilLookaheadSeparatorFail semicolon pEnd
-let runBlockErrRec = emitDiagnostics ad runBlockBreakCondition "run block expected" 
-let runSequence = sepBy (runBlock <|> runBlockErrRec) semicolon |>> Ast.RunSequence // injection of choice between runBlock and runBlockErrRec
+let runBlockErrRec = emitDiagnostics ad runBlockBreakCondition "run block expected"
+let tryRunBlock = choice [runBlockMissingSomething; runBlockErrRec ]
+//let tryRunBlock = choice [runBlock ; runBlockErrRec]
+let runSequence = sepBy tryRunBlock semicolon .>> spaces |>> Ast.RunSequence // injection of choice between runBlock and runBlockErrRec
 
 let beginEndBlock = pBegin >>. runSequence .>> pEnd .>> spaces |>> Ast.Block
-let blockSequence = many1 beginEndBlock
+let blockSequence = (many1 beginEndBlock) .>> spaces
 let globalParser = blockSequence .>> eof |>> Ast.Ast
 

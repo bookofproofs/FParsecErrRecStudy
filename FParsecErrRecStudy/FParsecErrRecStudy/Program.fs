@@ -3,7 +3,7 @@ open ErrRecovery
 open ParserExamples
 
 
-let firstInput1 = "begin run {a};run a, b ;run{a, b} end begin run{a,b,c}; run{a,b} end "
+let firstInput1 = "begin run {a};run a, b };run{a, b} end begin run{a,b,c}; run{a,b} end "
 //let firstInput1 = "begin run {a,b,c};run {a} end "
 //let firstInput1 = "begin run {a,b,c} end "
 //let firstInput1 = "begin run {a} end "

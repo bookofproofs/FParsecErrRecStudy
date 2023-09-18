@@ -51,6 +51,14 @@ let emitDiagnostics (ad:Diagnostics) escapeParser msg =
     ad.AddDiagnostic diagnostic
     preturn () >>% Ast.Escape
     
+/// Emits diagnostics at the current position.
+let emitDiagnostics1 (ad:Diagnostics) (msg:string) pos =
+    let errorMsg = DiagnosticMessage msg
+    let diagnostic = Diagnostic (DiagnosticEmitter.Parser, DiagnosticSeverity.Error,pos,errorMsg)
+    ad.AddDiagnostic diagnostic
+    preturn ()
+
+
 /// A helper parser that skips any characters until innerSeparator would succeed,
 /// but where innerSeparator does not consume any input.
 let skipUntilLookaheadSeparator innerSeparator = 
@@ -87,5 +95,24 @@ let tryParseOther p msg (ad:Diagnostics) =
             let diagnostic = Diagnostic (DiagnosticEmitter.Parser, DiagnosticSeverity.Error,restInput.Position,diagnosticMsg)
             ad.AddDiagnostic diagnostic
             preturn Ast.Error
+
+
+let abc a b c (aName:string) (bName:string) (cName:string) (ad:Diagnostics) =
+    let aMissing = 
+        getPosition >>= fun pos -> 
+        b .>> c >>= fun r -> 
+            emitDiagnostics1 ad ("missing opening " + aName) pos
+            preturn r
+    let cMissing = 
+        getPosition >>= fun pos -> 
+        a >>. b >>= fun r -> 
+            emitDiagnostics1 ad ("missing closing " + cName) pos
+            preturn r
+    let bMising = emitDiagnostics ad (a >>. c) ("missing " + bName)
+   
+    (a >>. b .>> c)
+    <|> aMissing
+    <|> cMissing
+    <|> bMising
 
 

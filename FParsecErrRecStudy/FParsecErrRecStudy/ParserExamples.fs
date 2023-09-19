@@ -31,7 +31,7 @@ let runBlock = (pRun >>. leftBrace >>. charSequence) .>> rightBrace |>> Ast.Run
 // original parser
 // let runSequence = sepBy runBlock semicolon |>> Ast.RunSequence 
 // modifications adding error recovery to runSequence:
-let runBlockMissingSomething = pRun >>. abc leftBrace charSequence rightBrace "{" "charSequence" "}" ad
+let runBlockMissingSomething = pRun >>. abc leftBrace charSequence rightBrace "{" "charSequence" "}" ad |>> Ast.Run
 let runBlockBreakCondition = skipUntilLookaheadSeparatorFail semicolon pEnd
 let runBlockErrRec = emitDiagnostics ad runBlockBreakCondition "run block expected"
 let tryRunBlock = choice [runBlockMissingSomething; runBlockErrRec ]

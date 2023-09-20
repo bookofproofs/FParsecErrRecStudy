@@ -23,7 +23,7 @@ let charChoice = choice [a;b;c] .>> spaces
 // original parser
 // let charSequence = sepBy charChoice comma |>> Ast.Sequence 
 // modifications adding error recovery to charSequence:
-let charChoiceBreakCondition = skipUntilLookaheadSeparatorFail comma rightBrace 
+let charChoiceBreakCondition = skipUntilLookaheadSeparatorListFail comma [eof; pEnd; semicolon; rightBrace ]
 let charChoiceErrRec = emitDiagnostics ad charChoiceBreakCondition "charChoice a|b|c expected" 
 let charSequence = sepBy (charChoice <|> charChoiceErrRec) comma |>> Ast.Sequence // injection of charChoiceErrRec in choice
 

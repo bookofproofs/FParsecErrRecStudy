@@ -70,6 +70,13 @@ let skipUntilLookaheadSeparator innerSeparator =
 let skipUntilLookaheadSeparatorFail innerSeparator outerSeparator = 
     skipMany (notFollowedBy (attempt innerSeparator <|> outerSeparator) >>. anyChar)
 
+/// A helper parser that skips any characters until innerSeparator would succeed,
+/// but where innerSeparator does not consume any input, 
+/// unless, at the same position, one of a listed outerSeparators occurs.
+let skipUntilLookaheadSeparatorListFail innerSeparator outerSeparators = 
+    outerSeparators
+    |> List.map (fun outerSeparator -> attempt (skipUntilLookaheadSeparatorFail innerSeparator outerSeparator))
+    |> List.reduce (<|>)
 
 /// Similar to tryParse but instead of applying the 'run p input', it will 
 /// return a lambda function that takes an 'input' and applies 'run p' on it.
@@ -108,10 +115,15 @@ let abc a b c (aName:string) (bName:string) (cName:string) (ad:Diagnostics) =
         a >>. b >>= fun r -> 
             emitDiagnostics1 ad ("missing closing " + cName) pos
             preturn r
+    let acMissing = 
+        getPosition >>= fun pos -> 
+        b >>= fun r -> 
+            emitDiagnostics1 ad ("missing opening " + aName + " and closing " + cName) pos
+            preturn r
     let bMising = emitDiagnostics ad (a >>. c) ("missing " + bName)
    
-    (a >>. b .>> c)
-    <|> aMissing
+    a >>. b .>> c
+    <|> (attempt aMissing <|> acMissing)
     <|> cMissing
     <|> bMising
 

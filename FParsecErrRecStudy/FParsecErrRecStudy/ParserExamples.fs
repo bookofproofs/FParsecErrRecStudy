@@ -13,8 +13,8 @@ let b = skipChar 'b' .>> spaces >>% Ast.B
 let c = skipChar 'c' .>> spaces >>% Ast.C
 let leftBrace: Parser<_, unit> = skipChar '{' >>. spaces
 let rightBrace: Parser<_, unit>  = skipChar '}' >>. spaces
-let semicolon = skipChar ';' .>> spaces
-let comma = skipChar ',' .>> spaces
+let semicolon = skipChar ';' .>> spaces 
+let comma = skipChar ',' .>> spaces 
 let pBegin = skipString "begin" >>. spaces 
 let pRun = skipString "run" >>. spaces 
 let pEnd = skipString "end" >>. spaces 
@@ -23,7 +23,7 @@ let charChoice = choice [a;b;c] .>> spaces
 // original parser
 // let charSequence = sepBy charChoice comma |>> Ast.Sequence 
 // modifications adding error recovery to charSequence:
-let charChoiceBreakCondition = skipUntilLookaheadSeparatorListFail comma [eof; pEnd; semicolon; rightBrace ]
+let charChoiceBreakCondition = skipUntilLookaheadSeparatorFail comma rightBrace 
 let charChoiceErrRec = emitDiagnostics ad charChoiceBreakCondition "charChoice a|b|c expected" 
 let charSequence = sepBy (charChoice <|> charChoiceErrRec) comma |>> Ast.Sequence // injection of charChoiceErrRec in choice
 
@@ -34,11 +34,10 @@ let runBlock = (pRun >>. leftBrace >>. charSequence) .>> rightBrace |>> Ast.Run
 let runBlockMissingSomething = pRun >>. abc leftBrace charSequence rightBrace "{" "charSequence" "}" ad |>> Ast.Run
 let runBlockBreakCondition = skipUntilLookaheadSeparatorFail semicolon pEnd
 let runBlockErrRec = emitDiagnostics ad runBlockBreakCondition "run block expected"
-let tryRunBlock = choice [runBlockMissingSomething; runBlockErrRec ]
-//let tryRunBlock = choice [runBlock ; runBlockErrRec]
+let tryRunBlock = choice [runBlockMissingSomething ; runBlockErrRec]
 let runSequence = sepBy tryRunBlock semicolon .>> spaces |>> Ast.RunSequence // injection of choice between runBlock and runBlockErrRec
 
 let beginEndBlock = pBegin >>. runSequence .>> pEnd .>> spaces |>> Ast.Block
 let blockSequence = (many1 beginEndBlock) .>> spaces
-let globalParser = blockSequence .>> eof |>> Ast.Ast
+let globalParser = spaces >>. blockSequence .>> eof |>> Ast.Ast
 

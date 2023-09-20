@@ -71,13 +71,15 @@ let runBlock = (pRun >>. leftBrace >>. spaces >>. charSequence .>> spaces) .>> r
 let runSequence = sepBy runBlock semicolon |>> Ast.RunSequence 
 let beginEndBlock = pBegin >>. runSequence .>> pEnd .>> spaces |>> Ast.Block
 let blockSequence = many1 beginEndBlock
-let globalParser = blockSequence .>> eof |>> Ast.Ast
+let globalParser = spaces >>. blockSequence .>> eof |>> Ast.Ast
 ```
 
 Note that we have different contexts in which we would like to add error recovery:
 * **charSequence embedded in runBlock**: What if we have a comma-separated sequence of characters, some of which do not match a|b|c, but still end with "}"
 * **runBlockSequence embedded in beginEndBlock**: What if we have a semicolon-separated sequence of runBlocks, some of which do not match runBlock, but still end with pEnd?
 * **beginEndBlock embedded in blockSequence**: What if we have a whitespace-separated sequence of beginEndBlocks, some of which do not match the parser beginEndBlock, but still end with eof?
+
+Another consideration is that the grammar deals with whitespaces by consuming any whitespace at the end of each rule production, and, in the globalParser, at the very beginning of the possible input. This is kind of good practice, because it already deals with a lot of special cases we do not want to care about while adding error recovery.
 
 ## General Approach
 
@@ -125,19 +127,19 @@ The class diagnostics is a mutable list of diagnostics and provides some members
 Our error recovery should cover the following use cases that we want to complement with (unit) tests:
 
 ### Erroneousness charSequence (EcS)
-#### EcS1 (complemented by TestEsS01)
+#### EcS1 (complemented by TestEcS01)
 ```
 begin run {a,c,d,a };run{a, b} end
 ```
 In this use case, the first charSequence contains a 'd' but expects 'a'|'b'|'c'.
 
-#### EsS2 (complemented by TestEsS02)
+#### EcS2 (complemented by TestEcS02)
 ```
 begin run {a,c,b, };run{a, b} end
 ```
 In this use case, the first charSequence contains a ',' that is not followed by some 'a'|'b'|'c'.
 
-#### Approach to Error Recovery
+#### Approach to Error Recovery pf EsSx
 To achieve this kind or error recovery, we will modify the original parser 
 
 ```
@@ -183,3 +185,20 @@ let charSequence = sepBy (charChoice <|> charChoiceErrRec) comma |>> Ast.Sequenc
 ```
 This injection enriches the possibilities of our parser to deal with comma-separated lists of cases other than those consumable by `charChoice` alone.
 
+### Erroneousness runBlock (ErB)
+#### ErB1 (complemented by TestErB01)
+```
+begin run {a};run {a, b, ;run{a, b} end
+```
+In this use case, the second run block does not have a closing "}" and there is another run block comming.
+#### ErB1 (complemented by TestErB02)
+```
+begin run {a,c,a};run a,c ;run{a, b} end
+```
+In this use case, the second run block does not have an opening and an closing "}".
+
+rrrrr ccccc rrrrr
+run { a,b,c }
+
+run { a,b,c, 
+run { a,b,c 

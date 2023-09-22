@@ -4,7 +4,7 @@ type Ast =
     | A 
     | B 
     | C 
-    | Empty 
+    | EmptySequence 
     | Sequence of Ast list
     | Run of Ast 
     | RunSequence of Ast list

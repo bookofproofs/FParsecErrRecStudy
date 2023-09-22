@@ -24,6 +24,14 @@ type Diagnostics () =
 
 let ad = Diagnostics() 
 
+/// A simple helper function for printing trace information to the console (taken from FParsec Docs)
+let (<!>) (p: Parser<_,_>) label : Parser<_,_> =
+    fun stream ->
+        printfn "%A: Entering %s" stream.Position label
+        let reply = p stream
+        printfn "%A: Leaving %s (%A)" stream.Position label reply.Status
+        reply
+
 /// Emit any errors occurring in the globalParser
 /// This is to make sure that the parser will always emit diagnostics, 
 /// even if the error recovery fails on a global level (and so does the parser).
@@ -123,16 +131,10 @@ let abc a b c (aName:string) (bName:string) (cName:string) (ad:Diagnostics) =
             emitDiagnostics1 ad ("missing closing " + cName) pos
             preturn r
     // let bMissing = emitDiagnostics ad (a >>. c) ("missing " + bName)
-    let bMissing = a >>. lookAhead c >>% Ast.Empty 
+    let bMissing = a >>. c >>% Ast.EmptySequence
    
-    attempt bMissing <|> a >>. b .>> c
+    attempt bMissing <|> 
+    (a >>. b .>> c
     <|> (attempt aMissing <|> acMissing)
-    <|> cMissing
+    <|> cMissing) 
 
-/// A simple helper function for printing trace information to the console (taken from FParsec Docs)
-let (<!>) (p: Parser<_,_>) label : Parser<_,_> =
-    fun stream ->
-        printfn "%A: Entering %s" stream.Position label
-        let reply = p stream
-        printfn "%A: Leaving %s (%A)" stream.Position label reply.Status
-        reply

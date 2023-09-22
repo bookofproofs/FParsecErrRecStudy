@@ -11,15 +11,15 @@ open ErrRecovery
 let a = skipChar 'a' .>> spaces >>% Ast.A
 let b = skipChar 'b' .>> spaces >>% Ast.B
 let c = skipChar 'c' .>> spaces >>% Ast.C
-let leftBrace: Parser<_, unit> = skipChar '{' >>. spaces >>% Ast.Empty 
-let rightBrace: Parser<_, unit>  = skipChar '}' >>. spaces
+let leftBrace: Parser<_, unit> = skipChar '{' >>. spaces >>% Ast.EmptySequence 
+let rightBrace: Parser<_, unit>  = skipChar '}' >>. spaces             
 let semicolon = skipChar ';' .>> spaces 
 let comma = skipChar ',' .>> spaces 
 let pBegin = skipString "begin" >>. spaces 
 let pRun = skipString "run" >>. spaces 
 let pEnd = skipString "end" >>. spaces 
 
-let charChoice = choice [a;b;c] .>> spaces
+let charChoice = choice [a;b;c] .>> spaces <!> "charChoice"
 // original parser
 // let charSequence = sepBy charChoice comma |>> Ast.Sequence 
 // modifications adding error recovery to charSequence:

@@ -11,7 +11,7 @@ open ErrRecovery
 let a = skipChar 'a' .>> spaces >>% Ast.A
 let b = skipChar 'b' .>> spaces >>% Ast.B
 let c = skipChar 'c' .>> spaces >>% Ast.C
-let leftBrace: Parser<_, unit> = skipChar '{' >>. spaces
+let leftBrace: Parser<_, unit> = skipChar '{' >>. spaces >>% Ast.Empty 
 let rightBrace: Parser<_, unit>  = skipChar '}' >>. spaces
 let semicolon = skipChar ';' .>> spaces 
 let comma = skipChar ',' .>> spaces 
@@ -27,8 +27,8 @@ let charChoiceBreakCondition = skipUntilLookaheadSeparatorFail comma rightBrace
 let charChoiceErrRec = emitDiagnostics ad charChoiceBreakCondition "charChoice a|b|c expected" 
 let charSequence = sepBy (charChoice <|> charChoiceErrRec) comma |>> Ast.Sequence // injection of charChoiceErrRec in choice
 
-let runBlock = (pRun >>. leftBrace >>. charSequence) .>> rightBrace |>> Ast.Run
 // original parser
+// let runBlock = (pRun >>. leftBrace >>. charSequence) .>> rightBrace |>> Ast.Run
 // let runSequence = sepBy runBlock semicolon |>> Ast.RunSequence 
 // modifications adding error recovery to runSequence:
 let runBlockMissingSomething = pRun >>. abc leftBrace charSequence rightBrace "{" "charSequence" "}" ad |>> Ast.Run

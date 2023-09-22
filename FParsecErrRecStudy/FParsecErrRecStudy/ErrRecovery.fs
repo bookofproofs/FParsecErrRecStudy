@@ -118,13 +118,21 @@ let abc a b c (aName:string) (bName:string) (cName:string) (ad:Diagnostics) =
     let acMissing = 
         getPosition >>= fun pos -> 
         b >>= fun r -> 
-            emitDiagnostics1 ad ("missing opening " + aName + " and closing " + cName) pos
+            emitDiagnostics1 ad ("missing opening " + aName) pos
+            getPosition >>= fun pos -> 
+            emitDiagnostics1 ad ("missing closing " + cName) pos
             preturn r
-    let bMising = emitDiagnostics ad (a >>. c) ("missing " + bName)
+    // let bMissing = emitDiagnostics ad (a >>. c) ("missing " + bName)
+    let bMissing = a >>. lookAhead c >>% Ast.Empty 
    
-    a >>. b .>> c
+    attempt bMissing <|> a >>. b .>> c
     <|> (attempt aMissing <|> acMissing)
     <|> cMissing
-    <|> bMising
 
-
+/// A simple helper function for printing trace information to the console (taken from FParsec Docs)
+let (<!>) (p: Parser<_,_>) label : Parser<_,_> =
+    fun stream ->
+        printfn "%A: Entering %s" stream.Position label
+        let reply = p stream
+        printfn "%A: Leaving %s (%A)" stream.Position label reply.Status
+        reply

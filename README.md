@@ -127,17 +127,24 @@ The class diagnostics is a mutable list of diagnostics and provides some members
 Our error recovery should cover the following use cases that we want to complement with (unit) tests:
 
 ### Erroneousness charSequence (EcS)
-#### EcS1 (complemented by TestEcS01)
+#### EcS1 (complemented by TestEcS01 and TestEcS01Diag)
 ```
 begin run {a,c,d,a };run{a, b} end
 ```
 In this use case, the first charSequence contains a 'd' but expects 'a'|'b'|'c'.
 
-#### EcS2 (complemented by TestEcS02)
+#### EcS2 (complemented by TestEcS02 and TestEcS02Diag)
 ```
 begin run {a,c,b, };run{a, b} end
 ```
 In this use case, the first charSequence contains a ',' that is not followed by some 'a'|'b'|'c'.
+
+#### EcS3 (complemented by TestEcS03 and TestEcS03Diag)
+```
+begin run {a};run {a, b, ;run{a, b} end
+```
+In this use case, the second charSequence contains a ',' that is not followed by some 'a'|'b'|'c', 
+escaping the error is still possible, because a third, properly closed char Sequence occurs.
 
 #### Approach to Error Recovery pf EsSx
 To achieve this kind or error recovery, we will modify the original parser 
@@ -188,17 +195,17 @@ This injection enriches the possibilities of our parser to deal with comma-separ
 ### Erroneousness runBlock (ErB)
 #### ErB1 (complemented by TestErB01)
 ```
-begin run {a};run {a, b, ;run{a, b} end
+begin run {a};run a, b };run{a, b} end
 ```
-In this use case, the second run block does not have a closing "}" and there is another run block comming.
+In this use case, the second run block does not have a closing "}".
 #### ErB1 (complemented by TestErB02)
 ```
 begin run {a,c,a};run a,c ;run{a, b} end
 ```
-In this use case, the second run block does not have an opening and an closing "}".
+In this use case, the second run block neither as an opening "{" nor closing "}".
+#### ErB1 (complemented by TestErB03)
+```
+begin run {a,c,a};run { } ;run{a, b} end
+```
+In this use case, the second run block is missing a charSequence.
 
-rrrrr ccccc rrrrr
-run { a,b,c }
-
-run { a,b,c, 
-run { a,b,c 

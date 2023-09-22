@@ -205,6 +205,32 @@ Expecting: end of input or 'begin'
         let result = tryParse globalParser "parser could not recover from errors;" ad inputTestErB02
         let actualDiags = ad.DiagnosticsToString
         let expectedDiags = """Diagnostic
+      (Parser, Error, (Ln: 1, Col: 23), DiagnosticMessage "missing opening {")
+    Diagnostic
+      (Parser, Error, (Ln: 1, Col: 27), DiagnosticMessage "missing closing }")"""
+        Assert.AreEqual(replaceWhiteSpace expectedDiags, replaceWhiteSpace actualDiags)
+
+    [<TestMethod>]
+    member this.TestErB03 () =
+        // In this use case, the second run block is missing a charSequence.
+        let inputTestErB02 = "begin run {a,c,a};run { } ;run{a, b} end"
+        let result = tryParse globalParser "parser could not recover from errors;" ad inputTestErB02
+        let actual = sprintf "%O" result
+        let expected = """Ast
+      [Block
+         (RunSequence
+            [Run (Sequence [A; C; A]); Run (Sequence [Escape]);
+             Run (Sequence [A; B])])]"""
+        Assert.AreEqual(replaceWhiteSpace expected, actual);
+
+    [<TestMethod>]
+    member this.TestErB03Diag () =
+        // In this use case, the second run block is missing a charSequence.
+        ad.Clear()
+        let inputTestErB02 = "begin run {a,c,a};run { } ;run{a, b} end"
+        let result = tryParse globalParser "parser could not recover from errors;" ad inputTestErB02
+        let actualDiags = ad.DiagnosticsToString
+        let expectedDiags = """Diagnostic
       (Parser, Error, (Ln: 1, Col: 23),
        DiagnosticMessage "missing opening { and closing }")"""
-        Assert.AreEqual(replaceWhiteSpace expectedDiags, replaceWhiteSpace actualDiags)
+        Assert.AreEqual(replaceWhiteSpace expectedDiags, actualDiags)

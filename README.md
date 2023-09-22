@@ -126,7 +126,7 @@ The class diagnostics is a mutable list of diagnostics and provides some members
 
 Our error recovery should cover the following use cases that we want to complement with (unit) tests:
 
-### Erroneousness charSequence (EcS)
+### Erroneous charSequence (EcS)
 #### EcS1 (complemented by TestEcS01 and TestEcS01Diag)
 ```
 begin run {a,c,d,a };run{a, b} end
@@ -192,18 +192,18 @@ let charSequence = sepBy (charChoice <|> charChoiceErrRec) comma |>> Ast.Sequenc
 ```
 This injection enriches the possibilities of our parser to deal with comma-separated lists of cases other than those consumable by `charChoice` alone.
 
-### Erroneousness runBlock (ErB)
+### Erroneous runBlock (ErB)
 #### ErB1 (complemented by TestErB01)
 ```
 begin run {a};run a, b };run{a, b} end
 ```
 In this use case, the second run block does not have a closing "}".
-#### ErB1 (complemented by TestErB02)
+#### ErB2 (complemented by TestErB02)
 ```
 begin run {a,c,a};run a,c ;run{a, b} end
 ```
 In this use case, the second run block neither as an opening "{" nor closing "}".
-#### ErB1 (complemented by TestErB03)
+#### ErB3 (complemented by TestErB03)
 ```
 begin run {a,c,a};run { } ;run{a, b} end
 ```

@@ -19,7 +19,7 @@ let pBegin = skipString "begin" >>. spaces
 let pRun = skipString "run" >>. spaces 
 let pEnd = skipString "end" >>. spaces 
 
-let charChoice = choice [a;b;c] .>> spaces <!> "charChoice"
+let charChoice = choice [a;b;c] .>> spaces 
 // original parser
 // let charSequence = sepBy charChoice comma |>> Ast.Sequence 
 // modifications adding error recovery to charSequence:

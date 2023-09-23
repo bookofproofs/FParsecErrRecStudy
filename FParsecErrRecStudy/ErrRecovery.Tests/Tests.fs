@@ -70,10 +70,10 @@ Expecting: end of input or 'begin'
 
 
     [<TestMethod>]
-    member this.TestEcS01 () =
+    member this.TestEcharSequence01 () =
         // In this use case, the first charSequence contains a 'd' but expects 'a'|'b'|'c'.
-        let inputTestEcS01 = "begin run {a,c,d,a };run{a, b} end begin run{a,b,c}; run{a,b} end "
-        let result = tryParse globalParser "parser could not recover from errors;" ad inputTestEcS01
+        let inputTestEcharSequence01 = "begin run {a,c,d,a };run{a, b} end begin run{a,b,c}; run{a,b} end "
+        let result = tryParse globalParser "parser could not recover from errors;" ad inputTestEcharSequence01
         let actual = sprintf "%O" result
         let expected = """Ast
   [Block (RunSequence [Run (Sequence [A; C; Escape; A]); Run (Sequence [A; B])]);
@@ -81,11 +81,11 @@ Expecting: end of input or 'begin'
         Assert.AreEqual(replaceWhiteSpace expected, replaceWhiteSpace actual);
 
     [<TestMethod>]
-    member this.TestEcS01Diag () =
+    member this.TestEcharSequence01Diag () =
         // In this use case, the first charSequence contains a 'd' but expects 'a'|'b'|'c'.
-        let inputTestEcS01 = "begin run {a,c,d,a };run{a, b} end begin run{a,b,c}; run{a,b} end "
+        let inputTestEcharSequence01 = "begin run {a,c,d,a };run{a, b} end begin run{a,b,c}; run{a,b} end "
         ad.Clear()
-        let result = tryParse globalParser "parser could not recover from errors;" ad inputTestEcS01
+        let result = tryParse globalParser "parser could not recover from errors;" ad inputTestEcharSequence01
         let actualDiags = ad.DiagnosticsToString
         let expectedDiags = """Diagnostic
   (Parser, Error, (Ln: 1, Col: 16),
@@ -94,10 +94,10 @@ Expecting: end of input or 'begin'
 
 
     [<TestMethod>]
-    member this.TestEcS02 () =
+    member this.TestEcharSequence02 () =
         // In this use case, the first charSequence contains a ',' that is not followed by some 'a'|'b'|'c'.
-        let inputTestEcS02 = "begin run {a,c,b, };run{a, b} end begin run{a,b,c}; run{a,b} end "
-        let result = tryParse globalParser "parser could not recover from errors;" ad inputTestEcS02
+        let inputTestEcharSequence02 = "begin run {a,c,b, };run{a, b} end begin run{a,b,c}; run{a,b} end "
+        let result = tryParse globalParser "parser could not recover from errors;" ad inputTestEcharSequence02
         let actual = sprintf "%O" result
         let expected = """Ast
   [Block
@@ -107,11 +107,11 @@ Expecting: end of input or 'begin'
         Assert.AreEqual(replaceWhiteSpace expected, replaceWhiteSpace actual);
 
     [<TestMethod>]
-    member this.TestEcS02Diag () =
+    member this.TestEcharSequence02Diag () =
         // In this use case, the first charSequence contains a ',' that is not followed by some 'a'|'b'|'c'.
-        let inputTestEcS02 = "begin run {a,c,b, };run{a, b} end begin run{a,b,c}; run{a,b} end "
+        let inputTestEcharSequence02 = "begin run {a,c,b, };run{a, b} end begin run{a,b,c}; run{a,b} end "
         ad.Clear()
-        let result = tryParse globalParser "parser could not recover from errors;" ad inputTestEcS02
+        let result = tryParse globalParser "parser could not recover from errors;" ad inputTestEcharSequence02
         let actualDiags = ad.DiagnosticsToString
         let expectedDiags = """Diagnostic
   (Parser, Error, (Ln: 1, Col: 19),
@@ -119,22 +119,22 @@ Expecting: end of input or 'begin'
         Assert.AreEqual(replaceWhiteSpace expectedDiags, replaceWhiteSpace actualDiags)
 
     [<TestMethod>]
-    member this.TestEcS03 () =
-        // In this use case, the second charSequence contains a ',' that is not followed by some 'a'|'b'|'c', 
-        // escaping the error is still possible, because a third, properly closed char Sequence occurs.
-        let inputTestEcS03 = " begin run {a};run {a, b, ;run{a, b} end "
-        let result = tryParse globalParser "parser could not recover from errors;" ad inputTestEcS03
+    member this.TestEcharSequence03 () =
+        // In this use case, the second charSequence ends by ',' that is not followed another charChoice, missing an '}' token.
+        // Escaping the error is still possible, because a third, properly closed charSequence occurs.
+        let inputTestEcharSequence03 = " begin run {a};run {a, b, ;run{a, b} end "
+        let result = tryParse globalParser "parser could not recover from errors;" ad inputTestEcharSequence03
         let actual = sprintf "%O" result
         let expected = """Ast [Block (RunSequence [Run (Sequence [A]); Run (Sequence [A; B; Escape; B])])]"""
         Assert.AreEqual(replaceWhiteSpace expected, replaceWhiteSpace actual);
 
     [<TestMethod>]
-    member this.TestEcS03Diag () =
-        // In this use case, the second charSequence contains a ',' that is not followed by some 'a'|'b'|'c', 
-        // escaping the error is still possible, because a third, properly closed char Sequence occurs.
-        let inputTestEcS03 = " begin run {a};run {a, b, ;run{a, b} end "
+    member this.TestEcharSequence03Diag () =
+        // In this use case, the second charSequence ends by ',' that is not followed another charChoice, missing an '}' token.
+        // Escaping the error is still possible, because a third, properly closed charSequence occurs.
+        let inputTestEcharSequence03 = " begin run {a};run {a, b, ;run{a, b} end "
         ad.Clear()
-        let result = tryParse globalParser "parser could not recover from errors;" ad inputTestEcS03
+        let result = tryParse globalParser "parser could not recover from errors;" ad inputTestEcharSequence03
         let actualDiags = ad.DiagnosticsToString
         let expectedDiags = """Diagnostic
   (Parser, Error, (Ln: 1, Col: 27),
@@ -142,31 +142,216 @@ Expecting: end of input or 'begin'
         Assert.AreEqual(replaceWhiteSpace expectedDiags, replaceWhiteSpace actualDiags)
 
     [<TestMethod>]
-    member this.TestTryParseError03 () =
-        // in this test, the use case is to escape from the context of 
-        // not properly formed runBlocks
-        // from which the parser should be able to recover,
-        // returning an AST that contains an AST with some escape nodes, 
-        // and we expect a diagnostic saying why and where these escape nodes occurred
+    member this.TestEcharSequence04 () =
+        // In this use case, the second run block is contains a comma instead of a charSequence.
+        let inputTestEcharSequence04 = "begin run {a,c,a};run { , } ;run{a, b} end"
+        let result = tryParse globalParser "parser could not recover from errors;" ad inputTestEcharSequence04
+        let actual = sprintf "%O" result
+        let expected = """Ast
+      [Block
+         (RunSequence
+            [Run (Sequence [A; C; A]); Run (Sequence [Escape; Escape]);
+             Run (Sequence [A; B])])]"""
+        Assert.AreEqual(replaceWhiteSpace expected, replaceWhiteSpace actual);
+
+    [<TestMethod>]
+    member this.TestEcharSequence04Diag () =
+        // In this use case, the second run block is contains a comma instead of a charSequence.
         ad.Clear()
-        let input = "begin run {a};xxx {a, b};run{a, b} end begin run{a,b,c}; run{a,b} end "
-        let result = tryParse globalParser "parser could not recover from errors;" ad input
+        let inputTestEcharSequence04 = "begin run {a,c,a};run { , } ;run{a, b} end"
+        let result = tryParse globalParser "parser could not recover from errors;" ad inputTestEcharSequence04
+        let actualDiags = ad.DiagnosticsToString
+        let expectedDiags = """Diagnostic
+  (Parser, Error, (Ln: 1, Col: 25),
+   DiagnosticMessage "charChoice a|b|c expected")
+Diagnostic
+  (Parser, Error, (Ln: 1, Col: 27),
+   DiagnosticMessage "charChoice a|b|c expected")"""
+        Assert.AreEqual(replaceWhiteSpace expectedDiags, replaceWhiteSpace actualDiags)
+
+    [<TestMethod>]
+    member this.TestEcharSequence05 () =
+        // In this use case, the second run block does close properly and has no valid charSequence.
+        let inputTestEcharSequence05 = "begin run {a};run { ;run{a, b} end"
+        let result = tryParse globalParser "parser could not recover from errors;" ad inputTestEcharSequence05
+        let actual = sprintf "%O" result
+        let expected = """Ast [Block (RunSequence [Run (Sequence [A]); Run (Sequence [Escape; B])])]"""
+        Assert.AreEqual(replaceWhiteSpace expected, replaceWhiteSpace actual);
+
+    [<TestMethod>]
+    member this.TestEcharSequence05Diag () =
+        // In this use case, the second run block does close properly and has no valid charSequence.
+        ad.Clear()
+        let inputTestEcharSequence05 = "begin run {a};run { ;run{a, b} end"
+        let result = tryParse globalParser "parser could not recover from errors;" ad inputTestEcharSequence05
+        let actualDiags = ad.DiagnosticsToString
+        let expectedDiags = """Diagnostic
+      (Parser, Error, (Ln: 1, Col: 21),
+       DiagnosticMessage "charChoice a|b|c expected")"""
+        Assert.AreEqual(replaceWhiteSpace expectedDiags, replaceWhiteSpace actualDiags)
+        
+    [<TestMethod>]
+    member this.TestEcharSequence06 () =
+        // In this use case, the second run block does close properly and has two opening curly brackets.
+        let inputTestEcharSequence06 = "begin run {a};run {{ ;run{a, b} end"
+        let result = tryParse globalParser "parser could not recover from errors;" ad inputTestEcharSequence06
+        let actual = sprintf "%O" result
+        let expected = """Ast [Block (RunSequence [Run (Sequence [A]); Run (Sequence [Escape; B])])]"""
+        Assert.AreEqual(replaceWhiteSpace expected, replaceWhiteSpace actual);
+
+    [<TestMethod>]
+    member this.TestEcharSequence06Diag () =
+        // In this use case, the second run block does close properly and has two opening curly brackets.
+        ad.Clear()
+        let inputTestEcharSequence06 = "begin run {a};run {{ ;run{a, b} end"
+        let result = tryParse globalParser "parser could not recover from errors;" ad inputTestEcharSequence06
+        let actualDiags = ad.DiagnosticsToString
+        let expectedDiags = """Diagnostic
+      (Parser, Error, (Ln: 1, Col: 20),
+       DiagnosticMessage "charChoice a|b|c expected")"""
+        Assert.AreEqual(replaceWhiteSpace expectedDiags, replaceWhiteSpace actualDiags)
+
+    [<TestMethod>]
+    member this.TestErunSequence01 () =
+        // In this use case, the second runBlock is not started properly.
+        let inputErunSequence01 = "begin run {a};xxx {a, b};run{a, b} end begin run{a,b,c}; run{a,b} end "
+        let result = tryParse globalParser "parser could not recover from errors;" ad inputErunSequence01
         let actual = sprintf "%O" result
         let expected = """Ast
   [Block (RunSequence [Run (Sequence [A]); Escape; Run (Sequence [A; B])]);
    Block (RunSequence [Run (Sequence [A; B; C]); Run (Sequence [A; B])])]"""
         Assert.AreEqual(replaceWhiteSpace expected, replaceWhiteSpace actual);
+
+    [<TestMethod>]
+    member this.TestErunSequence01Diag () =
+        // In this use case, the second runBlock is not started properly.
+        let inputErunSequence01 = "begin run {a};xxx {a, b};run{a, b} end begin run{a,b,c}; run{a,b} end "
+        ad.Clear()
+        let result = tryParse globalParser "parser could not recover from errors;" ad inputErunSequence01
         let actualDiags = ad.DiagnosticsToString
         let expectedDiags = """Diagnostic
   (Parser, Error, (Ln: 1, Col: 15), DiagnosticMessage "run block expected")"""
         Assert.AreEqual(replaceWhiteSpace expectedDiags, replaceWhiteSpace actualDiags)
 
+    [<TestMethod>]
+    member this.TestErunSequence02 () =
+        // In this use case, there is a third runBlock missing before the 'end' token.
+        let inputErunSequence02 = "begin run {a};run {a, b}; end begin run{a,b,c}; run{a,b} end"
+        let result = tryParse globalParser "parser could not recover from errors;" ad inputErunSequence02
+        let actual = sprintf "%O" result
+        let expected = """Ast
+      [Block (RunSequence [Run (Sequence [A]); Run (Sequence [A; B]); Escape]);
+       Block (RunSequence [Run (Sequence [A; B; C]); Run (Sequence [A; B])])]"""
+        Assert.AreEqual(replaceWhiteSpace expected, replaceWhiteSpace actual);
 
     [<TestMethod>]
-    member this.TestErB01 () =
-        // In this use case, the second run block does not have a closing "}".
-        let inputTestErB01 = "begin run {a};run a, b };run{a, b} end"
-        let result = tryParse globalParser "parser could not recover from errors;" ad inputTestErB01
+    member this.TestErunSequence02Diag () =
+        // In this use case, there is a third runBlock missing before the 'end' token.
+        let inputErunSequence02 = "begin run {a};run {a, b}; end begin run{a,b,c}; run{a,b} end"
+        ad.Clear()
+        let result = tryParse globalParser "parser could not recover from errors;" ad inputErunSequence02
+        let actualDiags = ad.DiagnosticsToString
+        let expectedDiags = """Diagnostic
+      (Parser, Error, (Ln: 1, Col: 27), DiagnosticMessage "run block expected")"""
+        Assert.AreEqual(replaceWhiteSpace expectedDiags, replaceWhiteSpace actualDiags)
+
+    [<TestMethod>]
+    member this.TestErunSequence03 () =
+        // In this use case, the second runSequence ends by ';' that is not followed another runBlock, missing an 'end' token.
+        // Escaping the error is still possible, because a third, properly closed runSequence occurs.
+        let inputErunSequence03 = "begin run {a};run {a, b}; begin run{a,b,c}; run{a,b} end"
+        let result = tryParse globalParser "parser could not recover from errors;" ad inputErunSequence03
+        let actual = sprintf "%O" result
+        let expected = """Ast
+  [Block
+     (RunSequence
+        [Run (Sequence [A]); Run (Sequence [A; B]); Escape;
+         Run (Sequence [A; B])])]"""
+        Assert.AreEqual(replaceWhiteSpace expected, replaceWhiteSpace actual);
+
+    [<TestMethod>]
+    member this.TestErunSequence03Diag () =
+        // In this use case, the second runSequence ends by ';' that is not followed another runBlock, missing an 'end' token.
+        // Escaping the error is still possible, because a third, properly closed runSequence occurs.
+        let inputErunSequence03 = "begin run {a};run {a, b}; begin run{a,b,c}; run{a,b} end"
+        ad.Clear()
+        let result = tryParse globalParser "parser could not recover from errors;" ad inputErunSequence03
+        let actualDiags = ad.DiagnosticsToString
+        let expectedDiags = """Diagnostic
+      (Parser, Error, (Ln: 1, Col: 27), DiagnosticMessage "run block expected")"""
+        Assert.AreEqual(replaceWhiteSpace expectedDiags, replaceWhiteSpace actualDiags)
+
+    [<TestMethod>]
+    member this.TestErunSequence04 () =
+        // In this use case, the second begin end block is contains a semicolon instead of a runSequence.
+        let inputErunSequence04 = "begin run {a} end begin ; end"
+        let result = tryParse globalParser "parser could not recover from errors;" ad inputErunSequence04
+        let actual = sprintf "%O" result
+        let expected = """Ast
+      [Block (RunSequence [Run (Sequence [A])]);
+       Block (RunSequence [Escape; Escape])]"""
+        Assert.AreEqual(replaceWhiteSpace expected, replaceWhiteSpace actual);
+
+    [<TestMethod>]
+    member this.TestErunSequence04Diag () =
+        // In this use case, the second begin end block is contains a semicolon instead of a runSequence.
+        let inputErunSequence04 = "begin run {a} end begin ; end"
+        ad.Clear()
+        let result = tryParse globalParser "parser could not recover from errors;" ad inputErunSequence04
+        let actualDiags = ad.DiagnosticsToString
+        let expectedDiags = """Diagnostic
+      (Parser, Error, (Ln: 1, Col: 25), DiagnosticMessage "run block expected")
+    Diagnostic
+      (Parser, Error, (Ln: 1, Col: 27), DiagnosticMessage "run block expected")"""
+        Assert.AreEqual(replaceWhiteSpace expectedDiags, replaceWhiteSpace actualDiags)
+
+    [<TestMethod>]
+    member this.TestErunSequence05 () =
+        // In this use case, the second begin end block is contains a semicolon instead of a runSequence.
+        let inputErunSequence05 = "begin run {a} end begin begin run{b} end"
+        let result = tryParse globalParser "parser could not recover from errors;" ad inputErunSequence05
+        let actual = sprintf "%O" result
+        let expected = """Ast [Block (RunSequence [Run (Sequence [A])]); Block (RunSequence [Escape])]"""
+        Assert.AreEqual(replaceWhiteSpace expected, replaceWhiteSpace actual);
+
+    [<TestMethod>]
+    member this.TestErunSequence05Diag () =
+        // In this use case, the second begin end block does close properly and has no valid runSequence.
+        let inputErunSequence05 = "begin run {a} end begin begin run{b} end"
+        ad.Clear()
+        let result = tryParse globalParser "parser could not recover from errors;" ad inputErunSequence05
+        let actualDiags = ad.DiagnosticsToString
+        let expectedDiags = """Diagnostic
+      (Parser, Error, (Ln: 1, Col: 25), DiagnosticMessage "run block expected")"""
+        Assert.AreEqual(replaceWhiteSpace expectedDiags, replaceWhiteSpace actualDiags)
+
+    [<TestMethod>]
+    member this.TestErunSequence06 () =
+        // In this use case, the second begin end block does close properly but has two opening 'begin' tokens.
+        let inputErunSequence06 = "begin run {a} end begin begin end begin run{b} end"
+        let result = tryParse globalParser "parser could not recover from errors;" ad inputErunSequence06
+        let actual = sprintf "%O" result
+        let expected = """Ast
+      [Block (RunSequence [Run (Sequence [A])]); Block (RunSequence [Escape]);
+       Block (RunSequence [Run (Sequence [B])])]"""
+        Assert.AreEqual(replaceWhiteSpace expected, replaceWhiteSpace actual);
+
+    [<TestMethod>]
+    member this.TestErunSequence06Diag () =
+        // In this use case, the second begin end block does close properly but has two opening 'begin' tokens.
+        let inputErunSequence06 = "begin run {a} end begin begin end begin run{b} end"
+        ad.Clear()
+        let result = tryParse globalParser "parser could not recover from errors;" ad inputErunSequence06
+        let actualDiags = ad.DiagnosticsToString
+        let expectedDiags = """Diagnostic
+      (Parser, Error, (Ln: 1, Col: 25), DiagnosticMessage "run block expected")"""
+        Assert.AreEqual(replaceWhiteSpace expectedDiags, replaceWhiteSpace actualDiags)
+
+    [<TestMethod>]
+    member this.TestErunBlock01 () =
+        // In this use case, the second run block is missing an opening "{".
+        let inputTestErunBlock01 = "begin run {a};run a, b };run{a, b} end"
+        let result = tryParse globalParser "parser could not recover from errors;" ad inputTestErunBlock01
         let actual = sprintf "%O" result
         let expected = """Ast
       [Block
@@ -175,21 +360,21 @@ Expecting: end of input or 'begin'
         Assert.AreEqual(replaceWhiteSpace expected, replaceWhiteSpace actual);
 
     [<TestMethod>]
-    member this.TestErB01Diag () =
-        // In this use case, the second run block does not have a closing "}".
-        let inputTestErB01 = "begin run {a};run a, b };run{a, b} end"
+    member this.TestErunBlock01Diag () =
+        // In this use case, the second run block is missing an opening "{".
+        let inputTestErunBlock01 = "begin run {a};run a, b };run{a, b} end"
         ad.Clear()
-        let result = tryParse globalParser "parser could not recover from errors;" ad inputTestErB01
+        let result = tryParse globalParser "parser could not recover from errors;" ad inputTestErunBlock01
         let actualDiags = ad.DiagnosticsToString
         let expectedDiags = """Diagnostic
       (Parser, Error, (Ln: 1, Col: 19), DiagnosticMessage "missing opening {")"""
         Assert.AreEqual(replaceWhiteSpace expectedDiags, replaceWhiteSpace actualDiags)
 
     [<TestMethod>]
-    member this.TestErB02 () =
-        // In this use case, the second run block does not have an closing "}".
-        let inputTestErB02 = "begin run {a,c,a};run a,c ;run{a, b} end"
-        let result = tryParse globalParser "parser could not recover from errors;" ad inputTestErB02
+    member this.TestErunBlock02 () =
+        // In this use case, the second run block is missing both, an opening "{", and a closing "}".
+        let inputTestErunBlock02 = "begin run {a,c,a};run a,c ;run{a, b} end"
+        let result = tryParse globalParser "parser could not recover from errors;" ad inputTestErunBlock02
         let actual = sprintf "%O" result
         let expected = """Ast
   [Block
@@ -198,11 +383,11 @@ Expecting: end of input or 'begin'
         Assert.AreEqual(replaceWhiteSpace expected, replaceWhiteSpace actual);
 
     [<TestMethod>]
-    member this.TestErB02Diag () =
-        // In this use case, the second run block does not have an closing "}".
+    member this.TestErunBlock02Diag () =
+        // In this use case, the second run block is missing both, an opening "{", and a closing "}".
         ad.Clear()
-        let inputTestErB02 = "begin run {a,c,a};run a,c ;run{a, b} end"
-        let result = tryParse globalParser "parser could not recover from errors;" ad inputTestErB02
+        let inputTestErunBlock02 = "begin run {a,c,a};run a,c ;run{a, b} end"
+        let result = tryParse globalParser "parser could not recover from errors;" ad inputTestErunBlock02
         let actualDiags = ad.DiagnosticsToString
         let expectedDiags = """Diagnostic
       (Parser, Error, (Ln: 1, Col: 23), DiagnosticMessage "missing opening {")
@@ -211,23 +396,94 @@ Expecting: end of input or 'begin'
         Assert.AreEqual(replaceWhiteSpace expectedDiags, replaceWhiteSpace actualDiags)
 
     [<TestMethod>]
-    member this.TestErB03 () =
-        // In this use case, the second run block is missing a charSequence.
-        let inputTestErB02 = "begin run {a,c,a};run { } ;run{a, b} end"
-        let result = tryParse globalParser "parser could not recover from errors;" ad inputTestErB02
+    member this.TestErunBlock03 () =
+        // In this use case, the second run block is empty.
+        let inputTestErunBlock03 = "begin run {a,c,a};run { } ;run{a, b} end"
+        let result = tryParse globalParser "parser could not recover from errors;" ad inputTestErunBlock03
         let actual = sprintf "%O" result
         let expected = """Ast
   [Block
      (RunSequence
-        [Run (Sequence [A; C; A]); Run EmptySequence; Run (Sequence [A; B])])]"""
+        [Run (Sequence [A; C; A]); Run Empty; Run (Sequence [A; B])])]"""
         Assert.AreEqual(replaceWhiteSpace expected, replaceWhiteSpace actual);
 
     [<TestMethod>]
-    member this.TestErB03Diag () =
-        // In this use case, the second run block is missing a charSequence.
+    member this.TestErunBlock03Diag () =
+        // In this use case, the second run block is empty.
         ad.Clear()
-        let inputTestErB02 = "begin run {a,c,a};run { } ;run{a, b} end"
-        let result = tryParse globalParser "parser could not recover from errors;" ad inputTestErB02
+        let inputTestErunBlock03 = "begin run {a,c,a};run { } ;run{a, b} end"
+        let result = tryParse globalParser "parser could not recover from errors;" ad inputTestErunBlock03
         let actualDiags = ad.DiagnosticsToString
         let expectedDiags = """"""
         Assert.AreEqual(replaceWhiteSpace expectedDiags, replaceWhiteSpace actualDiags)
+
+    [<TestMethod>]
+    member this.TestErunBlock04 () =
+        // In this use case, the second run block is missing a closing "}".
+        let inputTestErunBlock04 = "begin run {a};run { a, b ;run{a, b} end"
+        let result = tryParse globalParser "parser could not recover from errors;" ad inputTestErunBlock04
+        let actual = sprintf "%O" result
+        let expected = """Ast
+      [Block
+         (RunSequence
+            [Run (Sequence [A]); Run (Sequence [A; B]); Run (Sequence [A; B])])]"""
+        Assert.AreEqual(replaceWhiteSpace expected, replaceWhiteSpace actual);
+
+    [<TestMethod>]
+    member this.TestErunBlock04Diag () =
+        // In this use case, the second run block is missing a closing "}".
+        ad.Clear()
+        let inputTestErunBlock04 = "begin run {a};run { a, b ;run{a, b} end"
+        let result = tryParse globalParser "parser could not recover from errors;" ad inputTestErunBlock04
+        let actualDiags = ad.DiagnosticsToString
+        let expectedDiags = """Diagnostic
+      (Parser, Error, (Ln: 1, Col: 19), DiagnosticMessage "missing closing }")"""
+        Assert.AreEqual(replaceWhiteSpace expectedDiags, replaceWhiteSpace actualDiags)
+
+    [<TestMethod>]
+    member this.TestErunBlock05 () =
+        // In this use case, the second run block is missing an opening "{" and a charSequence.
+        let inputTestErunBlock05 = "begin run {a};run };run{a, b} end"
+        let result = tryParse globalParser "parser could not recover from errors;" ad inputTestErunBlock05
+        let actual = sprintf "%O" result
+        let expected = """Ast
+      [Block
+         (RunSequence
+            [Run (Sequence [A]); Run (Sequence [Escape]); Run (Sequence [A; B])])]"""
+        Assert.AreEqual(replaceWhiteSpace expected, replaceWhiteSpace actual);
+
+    [<TestMethod>]
+    member this.TestErunBlock05Diag () =
+        // In this use case, the second run block is missing an opening "{" and a charSequence.
+        ad.Clear()
+        let inputTestErunBlock05 = "begin run {a};run };run{a, b} end"
+        let result = tryParse globalParser "parser could not recover from errors;" ad inputTestErunBlock05
+        let actualDiags = ad.DiagnosticsToString
+        let expectedDiags = """Diagnostic
+      (Parser, Error, (Ln: 1, Col: 19),
+       DiagnosticMessage "charChoice a|b|c expected")
+    Diagnostic
+      (Parser, Error, (Ln: 1, Col: 19), DiagnosticMessage "missing opening {")"""
+        Assert.AreEqual(replaceWhiteSpace expectedDiags, replaceWhiteSpace actualDiags)
+
+    [<TestMethod>]
+    member this.TestErunBlock06 () =
+        // In this use case, the second run block contains only an opening "{".
+        let inputTestErunBlock06 = "begin run {a};run { ;run{b} end"
+        let result = tryParse globalParser "parser could not recover from errors;" ad inputTestErunBlock06
+        let actual = sprintf "%O" result
+        let expected = """Ast [Block (RunSequence [Run (Sequence [A]); Run (Sequence [Escape])])]"""
+        Assert.AreEqual(replaceWhiteSpace expected, replaceWhiteSpace actual);
+
+    [<TestMethod>]
+    member this.TestErunBlock06Diag () =
+        // In this use case, the second run block contains only an opening "{".
+        ad.Clear()
+        let inputTestErunBlock06 = "begin run {a};run { ;run{b} end"
+        let result = tryParse globalParser "parser could not recover from errors;" ad inputTestErunBlock06
+        let actualDiags = ad.DiagnosticsToString
+        let expectedDiags = """Diagnostic
+      (Parser, Error, (Ln: 1, Col: 21),
+       DiagnosticMessage "charChoice a|b|c expected")"""
+        Assert.AreEqual(replaceWhiteSpace expectedDiags, replaceWhiteSpace actualDiags)
+

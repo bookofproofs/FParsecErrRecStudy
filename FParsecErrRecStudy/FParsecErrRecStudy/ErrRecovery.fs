@@ -116,25 +116,23 @@ let abc a b c (aName:string) (bName:string) (cName:string) (ad:Diagnostics) =
     let aMissing = 
         getPosition >>= fun pos -> 
         b .>> c >>= fun r -> 
-            emitDiagnostics1 ad ("missing opening " + aName) pos
+            emitDiagnostics1 ad ("missing opening " + aName) pos |> ignore
             preturn r
     let cMissing = 
         getPosition >>= fun pos -> 
         a >>. b >>= fun r -> 
-            emitDiagnostics1 ad ("missing closing " + cName) pos
+            emitDiagnostics1 ad ("missing closing " + cName) pos |> ignore
             preturn r
     let acMissing = 
         getPosition >>= fun pos -> 
         b >>= fun r -> 
-            emitDiagnostics1 ad ("missing opening " + aName) pos
+            emitDiagnostics1 ad ("missing opening " + aName) pos |> ignore
             getPosition >>= fun pos -> 
-            emitDiagnostics1 ad ("missing closing " + cName) pos
+            emitDiagnostics1 ad ("missing closing " + cName) pos |> ignore
             preturn r
-    // let bMissing = emitDiagnostics ad (a >>. c) ("missing " + bName)
-    let bMissing = a >>. c >>% Ast.EmptySequence
+    let bMissing = a >>. c >>% Ast.Empty
    
     attempt bMissing <|> 
-    (a >>. b .>> c
+    attempt (a >>. b .>> c) <|> cMissing
     <|> (attempt aMissing <|> acMissing)
-    <|> cMissing) 
 

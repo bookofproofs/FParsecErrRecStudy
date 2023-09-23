@@ -8,6 +8,12 @@ To add error recovery to a more complex grammar that would recover from errors o
 In particular, we would like to return at least a partial AST where our parser can succeed in error recovery and emit diagnostics depending on the context in which the error recovery did succeed.
 Only a the case none of our context-related error recovery attempts succeed, our partial AST would be replaced by a single ERROR node, while still emitting diagnostics why this happened.
 
+## How to read this README.md
+
+This documentation reflects the repository's formation process, including refactoring, and not its current final version. As a new user of FParsec and a F# beginner, I wanted to share with you the problems I came across when trying to add error recovery to an FParserc parser. 
+
+I think that adding error recovery to a parser that does not support it in an in-built fashion is a non-trivial problem. It is not only a matter of being familiar with functional programming in F# or with FParsec to solve it. So you might be interested with trying out the examples by yourself and see what happens. If not, just stop reading right now and look / use the (still preliminary) final version of the repository's code.
+
 ## Example grammar 
 The grammar we want to parse is (in ebnf)
 
@@ -38,6 +44,7 @@ Thus, a syntactically correct productions of this grammar would be, for instance
 ```
 "begin run {a,b,a};run{a, b,c} end begin run{a,b,c}; run{a,b} end
 "begin run {a,b,c};run {a} end "
+"begin run {a,b,c};run {} end "
 "begin run {a,b,c} end "
 "begin run {a} end "
 ```
@@ -79,7 +86,7 @@ Note that we have different contexts in which we would like to add error recover
 * **runBlockSequence embedded in beginEndBlock**: What if we have a semicolon-separated sequence of runBlocks, some of which do not match runBlock, but still end with pEnd?
 * **beginEndBlock embedded in blockSequence**: What if we have a whitespace-separated sequence of beginEndBlocks, some of which do not match the parser beginEndBlock, but still end with eof?
 
-Another consideration is that the grammar deals with whitespaces by consuming any whitespace at the end of each rule production, and, in the globalParser, at the very beginning of the possible input. This is kind of good practice, because it already deals with a lot of special cases we do not want to care about while adding error recovery.
+Another consideration is that the grammar deals with whitespaces by consuming any whitespace at the end of each rule production, and, in the globalParser, at the very beginning of the possible input. This is kind of good practice, because it already deals with a lot of special cases we do not want to care about while adding error recovery. However, some grammars (like that of python, for instance) involve significant whitespaces and your grammar definition requires diligent definition in those cases.
 
 ## General Approach
 
@@ -120,33 +127,51 @@ let ad = Diagnostics()
 The types `DiagnosticEmitter`, `DiagnosticSeverity`, `DiagnosticMessage`, and `Diagnostic` we will need for logging any parser error. Since we are dealing with syntax errors,
 we will emit diagnostics with the severity 'Error' and the emitter 'Parser', but the classes are more general and could be used also in other contexts, for example to emit also warnings of an interpreter.
 
-The class diagnostics is a mutable list of diagnostics and provides some members to, create, log, print, or get diagnostics.
+The class diagnostics is a reference type implemented by System.Collections.Generic.List that stores diagnostics. The type provides some members to create, log, print, or get diagnostics.
 
 ## Use Cases
 
 Our error recovery should cover the following use cases that we want to complement with (unit) tests:
 
-### Erroneous charSequence (EcS)
-#### EcS1 (complemented by TestEcS01 and TestEcS01Diag)
+### Erroneous charSequence (EcharSequence)
+#### EcharSequence01 (complemented by TestEcharSequence01 and TestEcharSequence01Diag)
 ```
-begin run {a,c,d,a };run{a, b} end
+"begin run {a,c,d,a };run{a, b} end"
 ```
 In this use case, the first charSequence contains a 'd' but expects 'a'|'b'|'c'.
 
-#### EcS2 (complemented by TestEcS02 and TestEcS02Diag)
+#### EcharSequence02 (complemented by TestEcharSequence02 and TestEcharSequence02Diag)
 ```
-begin run {a,c,b, };run{a, b} end
+"begin run {a,c,b, };run{a, b} end"
 ```
-In this use case, the first charSequence contains a ',' that is not followed by some 'a'|'b'|'c'.
+In this use case, the first charSequence ends by a ',' that is not followed by some 'a'|'b'|'c'.
 
-#### EcS3 (complemented by TestEcS03 and TestEcS03Diag)
+#### EcharSequence03 (complemented by TestEcharSequence03 and TestEcharSequence03Diag)
 ```
-begin run {a};run {a, b, ;run{a, b} end
+"begin run {a};run {a, b, ;run{a, b} end"
 ```
-In this use case, the second charSequence contains a ',' that is not followed by some 'a'|'b'|'c', 
-escaping the error is still possible, because a third, properly closed char Sequence occurs.
+In this use case, the second charSequence ends by ',' that is not followed another charChoice, missing an '}' token.
+Escaping the error is still possible, because a third, properly closed charSequence occurs.
 
-#### Approach to Error Recovery pf EsSx
+#### EcharSequence04 (complemented by TestEcharSequence04 and TestEcharSequence04Diag)
+```
+"begin run {a,c,a};run { , } ;run{a, b} end"
+```
+In this use case, the second run block is contains a comma instead of a charSequence.
+
+#### EcharSequence05 (complemented by TestEcharSequence05 and TestEcharSequence05Diag)
+```
+"begin run {a};run { ;run{a, b} end"
+```
+In this use case, the second run block does close properly and has no valid charSequence.
+
+#### EcharSequence06 (complemented by TestEcharSequence06 and TestEcharSequence06Diag)
+```
+"begin run {a};run {{ ;run{a, b} end"
+```
+In this use case, the second run block does close properly and has two opening curly brackets.
+
+#### Approach to Error Recovery of EcharSequenceXX
 To achieve this kind or error recovery, we will modify the original parser 
 
 ```
@@ -158,7 +183,7 @@ by the following
 ```
 let charChoiceBreakCondition = skipUntilLookaheadSeparatorFail comma rightBrace 
 let charChoiceErrRec = emitDiagnostics ad charChoiceBreakCondition "charChoice a|b|c expected" 
-let charSequence = sepBy (charChoice <|> charChoiceErrRec) comma |>> Ast.Sequence // injection of charChoiceErrRec in choice
+let charSequence = sepBy (charChoice <|> charChoiceErrRec) comma |>> Ast.Sequence // injection of charChoiceErrRec as an alternative to charChoice
 ```
 
 The function `skipUntilLookaheadSeparatorFail` defined in the module `ErrRecovery`
@@ -168,7 +193,7 @@ let skipUntilLookaheadSeparatorFail innerSeparator outerSeparator =
 ```
 
 is a helper parser that skips any characters until the `innerSeparator` parser succeeds without consuming any input, unless, at the same position, an `outerSeparator` occurs.
-In our case, we want to skip the sequence of choices 'a'|'b'|'c' until either the next `comma` parser occurs (without consuming the input `','`), or we finally reach the ending `rightBrace` in the input.
+In our case, we want to skip the sequence of choices 'a'|'b'|'c' until either the next `comma` parser occurs (without consuming the input `','`), or we finally reach the ending `rightBrace` in the input. Of course, it only covers some  
 
 Then, we need an `emitDiagnostics` function from the module `ErrRecovery`.
 ```
@@ -190,22 +215,220 @@ In the above use case, the `charChoiceErrRec` parser emits the diagnostic messag
 ```
 let charSequence = sepBy (charChoice <|> charChoiceErrRec) comma |>> Ast.Sequence 
 ```
-This injection enriches the possibilities of our parser to deal with comma-separated lists of cases other than those consumable by `charChoice` alone.
+This injection enriches the possibilities of our parser to deal with erroneous charChoices.
 
-### Erroneous runBlock (ErB)
-#### ErB1 (complemented by TestErB01)
-```
-begin run {a};run a, b };run{a, b} end
-```
-In this use case, the second run block does not have a closing "}".
-#### ErB2 (complemented by TestErB02)
-```
-begin run {a,c,a};run a,c ;run{a, b} end
-```
-In this use case, the second run block neither as an opening "{" nor closing "}".
-#### ErB3 (complemented by TestErB03)
-```
-begin run {a,c,a};run { } ;run{a, b} end
-```
-In this use case, the second run block is missing a charSequence.
+### Erroneous runSequence (ErunSequence)
+#### Approach by analogy to EcharSequence
+The recovery mechanism described in the previous EcharSequencex section is applicable for other parsers in our grammar because it is independent from the specific parser. It should work whenever we have a sequence of something separated by a separator that we can parse via the parser 
 
+```
+let parser = sepBy something separator
+```
+
+In our grammar, this pattern applies both for 
+
+```
+let charSequence = sepBy charChoice comma |>> Ast.Sequence 
+```
+
+and for 
+
+```
+let runSequence = sepBy runBlock semicolon .>> spaces |>> Ast.RunSequence
+```
+
+Therefore, we can reproduce the mechanism also there by the following 
+
+```
+// original parser
+// let runSequence = sepBy runBlock semicolon |>> Ast.RunSequence 
+// modifications adding error recovery to runSequence:
+let runBlockBreakCondition = skipUntilLookaheadSeparatorFail semicolon pEnd
+let runBlockErrRec = emitDiagnostics ad runBlockBreakCondition "run block expected"
+let runSequence = sepBy (runBlock <|> runBlockErrRec) semicolon .>> spaces |>> Ast.RunSequence // injection of runBlockErrRec as an alternative to runBlock 
+```
+
+Now, we can complement our use cases EcharSequence01, 02, ... by the corresponding use cases ErunSequence01, 02, ....
+
+#### ErunSequence01 (complemented by TestErunSequence01 and TestErunSequence01Diag)
+```
+"begin run {a};xxx {a, b};run{a, b} end begin run{a,b,c}; run{a,b} end "
+```
+In this use case, the second runBlock is not started properly.
+
+#### ErunSequence02 (complemented by TestErunSequence02 and TestErunSequence02Diag)
+```
+"begin run {a};run {a, b}; end begin run{a,b,c}; run{a,b} end"
+```
+In this use case, there is a third runBlock missing before the 'end' token.
+
+#### ErunSequence03 (complemented by TestErunSequence03 and TestErunSequence03Diag)
+```
+"begin run {a};run {a, b}; begin run{a,b,c}; run{a,b} end"
+```
+In this use case, the second runSequence ends by ';' that is not followed another runBlock, missing an 'end' token.
+Escaping the error is still possible, because a third, properly closed runSequence occurs.
+
+#### ErunSequence04 (complemented by TestErunSequence04 and TestErunSequence04Diag)
+```
+"begin run {a} end begin ; end"
+```
+In this use case, the second begin end block is contains a semicolon instead of a runSequence.
+
+#### ErunSequence05 (complemented by TestErunSequence05 and TestErunSequence05Diag)
+```
+"begin run {a} end begin begin run{b} end"
+```
+In this use case, the second begin end block does close properly and has no valid runSequence.
+
+#### ErunSequence06 (complemented by TestErunSequence06 and TestErunSequence06Diag)
+```
+"begin run {a} end begin begin end begin run{b} end"
+```
+In this use case, the second begin end block does close properly but has two opening 'begin' tokens.
+
+### Erroneous runBlock (ErunBlock)
+So far, we can handle the most common errors that can occur in a sequence separated by some separator. 
+
+A common situation in grammars (e.g. of many programming languages) is that such sequences are enclosed by some opening and some closing tokens. For instance, 
+many programming languages support a list of comma-separated arguments enclosed by opening and closing parentheses.
+
+In our grammar, there are two enclosing types of tokens, `leftBrace` and `rightBrace` in `runBlock` as well as `pBegin` and `pEnd` in `beginEndBlock`.
+
+```
+let runBlock = (pRun >>. leftBrace >>. charSequence) .>> rightBrace |>> Ast.Run
+...
+let beginEndBlock = pBegin >>. runSequence .>> pEnd .>> spaces |>> Ast.Block
+...
+```
+
+The common pattern here is that we have some opening input `a`, followed by some inner input `b`, followed by some closing input `c` that we want to match. 
+Note that our error recovery and use cases so far only care about errors that can occur in `b`, being a sequence of something. While our grammar supports `a b c` (with no error), we still do not cover errors of the following types:
+1. `a b` (closing `c` is missing),
+1. `b c` (opening `a` is missing),
+1. `a c` (`b` is empty),
+1. `b` (opening `a` and closing `c` are missing),
+1. `c` (`a` and `b` are missing),
+1. `a` (`b` and `c` are missing).
+
+The attentive reader will notice that the case "`b` is missing" is already covered by our grammar. From the very beginning, `charSequence` and `runSequence` were allowed to be empty, because `sepBy` requires 0 or more occurrences. 
+
+```
+let charSequence = sepBy charChoice comma |>> Ast.Sequence 
+...
+let runSequence = sepBy runBlock semicolon |>> Ast.RunSequence 
+...
+```
+
+Unfortunately, we have modified their original definitions into 
+
+```
+let charSequence = sepBy (charChoice <|> charChoiceErrRec) comma |>> Ast.Sequence 
+...
+let runSequence =  sepBy (runBlock <|> runBlockErrRec) semicolon |>> Ast.RunSequence 
+...
+```
+With these modifications, given empty sequences of `charChoice` or `runBlock`, the parser will also try out our error recovery versions of them `charChoiceErrRec`, respectively `runBlockErrRec`. This has the side effect that they will emit the diagnostics `"charChoice a|b|c expected"`, respectively `"run block expected"`, if the sequence was empty.
+
+We have to find a way to deal with these false positives of our error recovery.
+
+After many fruitless attempts to somehow fix the existing recovery mechanism, the basic idea to make progress was to invent a new helper parser `abc` that would check the new cases and emit corresponding diagnostics, if something was missing. It turns out that such a parser is possible. The most tricky part of writing that parser was to find out a balanced way of in which order the parser has to try out the different cases while parsing the input before it definitely knows that it has to emit some diagnostics.
+
+This is the parser (which we add to the `ErrRecovery` module.)
+
+```
+let abc a b c (aName:string) (bName:string) (cName:string) (ad:Diagnostics) =
+    let aMissing = 
+        getPosition >>= fun pos -> 
+        b .>> c >>= fun r -> 
+            emitDiagnostics1 ad ("missing opening " + aName) pos |> ignore
+            preturn r
+    let cMissing = 
+        getPosition >>= fun pos -> 
+        a >>. b >>= fun r -> 
+            emitDiagnostics1 ad ("missing closing " + cName) pos |> ignore
+            preturn r
+    let acMissing = 
+        getPosition >>= fun pos -> 
+        b >>= fun r -> 
+            emitDiagnostics1 ad ("missing opening " + aName) pos |> ignore
+            getPosition >>= fun pos -> 
+            emitDiagnostics1 ad ("missing closing " + cName) pos |> ignore
+            preturn r
+    let bMissing = a >>. c >>% Ast.Empty
+   
+    attempt bMissing <|> 
+    attempt (a >>. b .>> c) <|> cMissing
+    <|> (attempt aMissing <|> acMissing)
+```
+
+
+Our version of the `abc` parser reflects the fact that we only want to match the enclosing `a` and `c` but do not want to add them to the abstract syntax tree. Moreover, it reflects the fact that `bMissing` is syntactically correct. There might be other versions of `abc` parsers needed for other grammars (we do not cover them here.) 
+
+Note that our version of `abc` first attempts to parse the input with the case `bMissing`, followed by another attempt to parse a `b` which is syntactically correctly enclosed by `a` and `c`. Those two cases emit no diagnostics, all other cases do.
+
+We also had to introduce a new Ast type
+```
+type Ast = 
+    ...
+    | Empty // used to mark empty inner inputs between enclosing ones 
+
+```
+because otherwise, the F# type inference would have problems with matching bMissing (being a unit) with a complete enclosed list (being Ast).
+
+To use the `abc` parser for error recovery, we have to modify our grammar once again. All we need to do is to replace `runBlock` by a `runBlockAbc` version:
+
+```
+// original parser
+// let runSequence = sepBy runBlock semicolon |>> Ast.RunSequence 
+
+// modifications after first adding error of recovery to runSequence:
+// let runBlockBreakCondition = skipUntilLookaheadSeparatorFail semicolon pEnd
+// let runBlockErrRec = emitDiagnostics ad runBlockBreakCondition "run block expected"
+// let runBlock = (pRun >>. leftBrace >>. charSequence) .>> rightBrace |>> Ast.Run
+// let runSequence = sepBy (runBlock <|> runBlockErrRec) semicolon .>> spaces |>> Ast.RunSequence // injection of runBlockErrRec as an alternative to runBlock 
+
+// modifications adding error recovery to runBlock:
+let runBlockAbc = pRun >>. abc leftBrace charSequence rightBrace "{" "charSequence" "}" ad |>> Ast.Run
+let runBlockBreakCondition = skipUntilLookaheadSeparatorFail semicolon pEnd
+let runBlockErrRec = emitDiagnostics ad runBlockBreakCondition "run block expected"
+let runSequence = sepBy (runBlockAbc <|> runBlockErrRec) semicolon .>> spaces |>> Ast.RunSequence // replacement of (runBlock <|> runBlockErrRec) by (runBlockABC <|> runBlockErrRec) 
+```
+
+By analogy, we could do the same modifications to `beginEndBlock`, replacing it by a version of `beginEndBlockAbc` but we don't do it yet for an unexpected behavior of our globalParser we will deal with later.
+
+For the time being, our modification allows us to deal with the following use cases ErunBlock01, 02,... .
+
+#### ErunBlock01 (complemented by TestErunBlock01 and TestErunBlock01Diag)
+```
+"begin run {a};run a, b };run{a, b} end"
+```
+In this use case, the second run block is missing an opening "{".
+#### ErunBlock02 (complemented by TestErunBlock02 and TestErunBlock02Diag)
+```
+"begin run {a,c,a};run a,c ;run{a, b} end"
+```
+In this use case, the second run block is missing both, an opening "{", and a closing "}".
+#### ErunBlock03 (complemented by TestErunBlock03 and TestErunBlock03Diag)
+```
+"begin run {a,c,a};run { } ;run{a, b} end"
+```
+In this use case, the second run block is empty.
+
+#### ErunBlock04 (complemented by TestErunBlock04 and TestErunBlock04Diag)
+```
+"begin run {a};run { a, b ;run{a, b} end"
+```
+In this use case, the second run block is missing a closing "}".
+
+#### ErunBlock05 (complemented by TestErunBlock05 and TestErunBlock05Diag)
+```
+"begin run {a};run };run{a, b} end"
+```
+In this use case, the second run block is missing an opening "{" and a charSequence.
+
+#### ErunBlock06 (complemented by TestErunBlock06 and TestErunBlock06Diag)
+```
+"begin run {a};run { ;run{b} end"
+```
+In this use case, the second run block contains only an opening "{".

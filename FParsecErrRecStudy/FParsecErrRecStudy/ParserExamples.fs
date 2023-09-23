@@ -11,10 +11,10 @@ open ErrRecovery
 let a = skipChar 'a' .>> spaces >>% Ast.A
 let b = skipChar 'b' .>> spaces >>% Ast.B
 let c = skipChar 'c' .>> spaces >>% Ast.C
-let leftBrace: Parser<_, unit> = skipChar '{' >>. spaces >>% Ast.EmptySequence 
-let rightBrace: Parser<_, unit>  = skipChar '}' >>. spaces             
-let semicolon = skipChar ';' .>> spaces 
-let comma = skipChar ',' .>> spaces 
+let leftBrace: Parser<_, unit> = skipChar '{' >>. spaces   
+let rightBrace: Parser<_, unit>  = skipChar '}' >>. spaces        
+let semicolon = skipChar ';' .>> spaces                                       
+let comma = skipChar ',' .>> spaces                                             
 let pBegin = skipString "begin" >>. spaces 
 let pRun = skipString "run" >>. spaces 
 let pEnd = skipString "end" >>. spaces 
@@ -25,19 +25,30 @@ let charChoice = choice [a;b;c] .>> spaces
 // modifications adding error recovery to charSequence:
 let charChoiceBreakCondition = skipUntilLookaheadSeparatorFail comma rightBrace 
 let charChoiceErrRec = emitDiagnostics ad charChoiceBreakCondition "charChoice a|b|c expected" 
-let charSequence = sepBy (charChoice <|> charChoiceErrRec) comma |>> Ast.Sequence // injection of charChoiceErrRec in choice
+let charSequence = sepBy (charChoice <|> charChoiceErrRec) comma |>> Ast.Sequence // injection of charChoiceErrRec as an alternative to charChoice
 
 // original parser
-// let runBlock = (pRun >>. leftBrace >>. charSequence) .>> rightBrace |>> Ast.Run
 // let runSequence = sepBy runBlock semicolon |>> Ast.RunSequence 
-// modifications adding error recovery to runSequence:
-let runBlockMissingSomething = pRun >>. abc leftBrace charSequence rightBrace "{" "charSequence" "}" ad |>> Ast.Run
+
+// modifications after first adding error of recovery to runSequence:
+// let runBlockBreakCondition = skipUntilLookaheadSeparatorFail semicolon pEnd
+// let runBlockErrRec = emitDiagnostics ad runBlockBreakCondition "run block expected"
+// let runBlock = (pRun >>. leftBrace >>. charSequence) .>> rightBrace |>> Ast.Run
+// let runSequence = sepBy (runBlock <|> runBlockErrRec) semicolon .>> spaces |>> Ast.RunSequence // injection of runBlockErrRec as an alternative to runBlock 
+
+// modifications adding error recovery to runBlock:
 let runBlockBreakCondition = skipUntilLookaheadSeparatorFail semicolon pEnd
 let runBlockErrRec = emitDiagnostics ad runBlockBreakCondition "run block expected"
-let tryRunBlock = choice [runBlockMissingSomething ; runBlockErrRec]
-let runSequence = sepBy tryRunBlock semicolon .>> spaces |>> Ast.RunSequence // injection of choice between runBlock and runBlockErrRec
+let runBlockAbc = pRun >>. abc leftBrace charSequence rightBrace "{" "charSequence" "}" ad |>> Ast.Run
+let runSequence = sepBy (runBlockAbc <|> runBlockErrRec) semicolon .>> spaces |>> Ast.RunSequence // replacement of (runBlock <|> runBlockErrRec) by (runBlockABC <|> runBlockErrRec) 
 
+// original parser
 let beginEndBlock = pBegin >>. runSequence .>> pEnd .>> spaces |>> Ast.Block
 let blockSequence = (many1 beginEndBlock) .>> spaces
+
+// modifications adding error recovery to beginEndBlock:
+// let beginEndBlockAbc = abc pBegin runSequence pEnd "begin" "runSequence" "end" ad |>> Ast.Block
+// let blockSequence = (many1 beginEndBlockAbc) .>> spaces // replacement by the 'abc' version of beginEndBlock
+
 let globalParser = spaces >>. blockSequence .>> eof |>> Ast.Ast
 

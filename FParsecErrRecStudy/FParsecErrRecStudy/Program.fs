@@ -14,9 +14,14 @@ printf "\n%s\n%O\n" firstInput1 (tryParse globalParser "expected at least one be
 ad.PrintDiagnostics
 *)
 
-ad.Clear()
-let input3 = "run { ;"
-let result3 = run ( pRun >>. abc leftBrace charSequence rightBrace "{" "charSequence" "}" ad) input3
-printf "%O\n" result3 
-ad.PrintDiagnostics
 
+try
+    ad.Clear()
+    let input = "begin run {a} end"
+    let result = run globalParser input
+    printf "%O\n" result
+    ad.PrintDiagnostics
+with
+| :? System.Exception as ex -> 
+    ad.PrintDiagnostics
+    printfn "An error occurred: %s" ex.Message

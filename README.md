@@ -42,7 +42,7 @@ globalParser = blockSequence EOF
 Thus, a syntactically correct productions of this grammar would be, for instance:
 
 ```
-"begin run {a,b,a};run{a, b,c} end begin run{a,b,c}; run{a,b} end
+"begin run {a,b,a};run{a, b,c} end begin run{a,b,c}; run{a,b} end"
 "begin run {a,b,c};run {a} end "
 "begin run {a,b,c};run {} end "
 "begin run {a,b,c} end "
@@ -395,10 +395,6 @@ let runBlockErrRec = emitDiagnostics ad runBlockBreakCondition "run block expect
 let runSequence = sepBy (runBlockAbc <|> runBlockErrRec) semicolon .>> spaces |>> Ast.RunSequence // replacement of (runBlock <|> runBlockErrRec) by (runBlockABC <|> runBlockErrRec) 
 ```
 
-By analogy, we could do the same modifications to `beginEndBlock`, replacing it by a version of `beginEndBlockAbc` but we don't do it yet for an unexpected behavior of our globalParser we will deal with later.
-
-For the time being, our modification allows us to deal with the following use cases ErunBlock01, 02,... .
-
 #### ErunBlock01 (complemented by TestErunBlock01 and TestErunBlock01Diag)
 ```
 "begin run {a};run a, b };run{a, b} end"
@@ -432,3 +428,147 @@ In this use case, the second run block is missing an opening "{" and a charSeque
 "begin run {a};run { ;run{b} end"
 ```
 In this use case, the second run block contains only an opening "{".
+
+### Erroneous beginEndBlock (EbeginEndBlock)
+
+By analogy, we could do the same modifications to `beginEndBlock`, replacing it by a version of `beginEndBlockAbc`. 
+
+```
+// original parser
+// let beginEndBlock = pBegin >>. runSequence .>> pEnd .>> spaces |>> Ast.Block
+// let blockSequence = (many1 beginEndBlock) .>> spaces
+
+// modifications adding error recovery to beginEndBlock:
+let beginEndBlockAbc = abc pBegin runSequence pEnd "begin" "runSequence" "end" ad |>> Ast.Block
+let blockSequence = (many1 beginEndBlockAbc) .>> spaces // replacement by the 'abc' version of beginEndBlock
+```
+However, it turns out that all unit tests we have created and tested successful so far now fail with the exception
+
+```
+The combinator 'many' was applied to a parser that succeeds without consuming input and without changing the parser state in any other way. (If no exception had been raised, the combinator likely would have entered an infinite loop.) 
+```
+
+Obviously we have a bug in our grammar because our new `beginEndBlockAbc` can now succeed without consuming any input. How can this possibly be? 
+
+A closer look at our `abc` parser reveals that this actually can happen if some of the choices tried out in `abc` succeed without consuming any input.
+
+Debugging a parser can be very challenging, and there are ways to do it (e.g. following the [approach from the FParsec Documentation](https://www.quanttec.com/fparsec/users-guide/debugging-a-parser.html). However, we have already some error recovery so we can make the parser output it after it threw the exception:
+
+```
+try
+    ad.Clear()
+    let input = "begin run {a} end"
+    let result = run (many1 beginEndBlockAbc) input
+    printf "%O\n" result
+    ad.PrintDiagnostics
+with
+| :? System.Exception as ex -> 
+    ad.PrintDiagnostics
+    printfn "An error occurred: %s" ex.Message
+```
+
+We get the following diagnostics:
+
+```
+Diagnostic
+  (Parser, Error, (Ln: 1, Col: 18), DiagnosticMessage "run block expected")
+Diagnostic
+  (Parser, Error, (Ln: 1, Col: 18), DiagnosticMessage "run block expected")
+Diagnostic
+  (Parser, Error, (Ln: 1, Col: 18), DiagnosticMessage "missing opening begin")
+Diagnostic
+  (Parser, Error, (Ln: 1, Col: 18), DiagnosticMessage "missing closing end")
+^------------------------^
+
+An error occurred: (Ln: 1, Col: 35): The combinator `many` was applied to a parser that succeeds without consuming input and without changing the parser state in any other way. (If no exception had been raised, the combinator likely would have entered an infinite loop.)
+```
+
+Obviously, our parser expects yet another `beginEndBlock` at the end of file. This is a hint that our grammar is not correct. A closer look at the `pEnd` parser reveals that we are consuming any optional spaces, although we are expecting significant spaces that would separate parts of the input stream that can be consumed by our `beginEndBlock` parser. So what we actually want to do is not to consume any trailing insignificant spaces after `pEnd` but use them as significant separators. We have to make the following corrections:
+
+```
+// let pEnd = skipString "end" >>. spaces 
+// becomes
+let pEnd = skipString "end" 
+...
+
+// let blockSequence = many1 beginEndBlockAbc
+// becomes
+let blockSequence = sepEndBy1 beginEndBlockAbc spaces1 
+```
+
+Our grammar is now correct. But some of our unit tests that worked before the change still fail. The reason are trailing spaces in the input strings of these failing unit tests. This is weird, because the FParsec Documentation tells us
+
+> `sepEndBy1 p sep` parses *one* or more occurrences of `p` separated and optionally ended by `sep` (in EBNF notation: `p (sep p)* sep?`). It returns a list of the results returned by `p`.
+
+Thus, `sepEndBy1 beginEndBlockAbc spaces1`  should ignore the last occurrence of trailing `spaces1`. Why doesn't it? 
+
+Again, our diagnostics help us in this case. For instance, if the trailing spaces occur at the 67th column of the input string, the following additional diagnostics regarding the trailing spaces are emitted:
+```
+Diagnostic
+  (Parser, Error, (Ln: 1, Col: 67), DiagnosticMessage "run block expected")
+Diagnostic
+  (Parser, Error, (Ln: 1, Col: 67), DiagnosticMessage "run block expected")
+Diagnostic
+  (Parser, Error, (Ln: 1, Col: 67), DiagnosticMessage "missing opening begin")
+Diagnostic
+  (Parser, Error, (Ln: 1, Col: 67), DiagnosticMessage "missing closing end")
+```
+Because these diagnostics are emitted, our parser does not fail. Consequently, `sepEndBy1` fails because it awaits yet another occurrence of `beginEndBlockAbc`.
+Only if our parser failed at trailing spaces, the `sepEndBy1` would succeed because it would correctly ignore trailing spaces. 
+
+Adding this special case in our `abc` helper parser would be difficult because we need to use it in different contexts and not only at the top level of our parser before the input stream ends. 
+
+We make the decide to "solve" our false positive diagnostics by removing the trailing spaces from the inputs to our failing unit tests. This is a trade-off between simplicity and functionality. Our error recovery is not perfect but it covers 'most common' syntax errors that can occur in our grammar. This way, we treat trailing spaces as another syntax error the user has to correct.
+
+What we gain by this decision is that we also can add new syntax errors our error recovery correctly supports, because we can complement the use cases ErunBlock01, 02, ... by corresponding use cases EbeginEndBlock01, 02, ...
+
+#### EbeginEndBlock01 (complemented by TestEbeginEndBlock01 and TestEbeginEndBlock01Diag)
+```
+"begin run {a} end run {b} end begin run{c} end"
+```
+In this use case, the second beginEnd block is missing an opening "begin".
+#### EbeginEndBlock02 (complemented by TestEbeginEndBlock02 and TestEbeginEndBlock02Diag)
+```
+"begin run {a} end run {b} begin run{c} end"
+```
+In this use case, the second beginEnd block is missing both, an opening "begin", and a closing "end".
+#### EbeginEndBlock03 (complemented by TestEbeginEndBlock03 and TestEbeginEndBlock03Diag)
+```
+"begin run {a} end begin end begin run{c} end"
+```
+In this use case, the second beginEnd block is empty (that is syntactically correct in our grammar)
+
+#### EbeginEndBlock04 (complemented by TestEbeginEndBlock04 and TestEbeginEndBlock04Diag)
+```
+"begin run {a} end begin run {b} begin run{c} end"
+```
+In this use case, the second beginEnd block is missing a closing "end".
+
+#### EbeginEndBlock05 (complemented by TestEbeginEndBlock05 and TestEbeginEndBlock05Diag)
+```
+"begin run {a} end end begin run{c} end"
+```
+In this use case, the second beginEnd block is missing an opening "begin" and a runSequence.
+
+#### EbeginEndBlock06 (complemented by TestEbeginEndBlock06 and TestEbeginEndBlock06Diag)
+```
+"begin run {a} end begin begin run{c} end"
+```
+In this use case, the second beginEnd block only contains an opening "begin".
+
+#### EbeginEndBlock07 (complemented by TestEbeginEndBlock07 and TestEbeginEndBlock07Diag)
+```
+"begin run {a};run{b} end xxxbegin run{b,c} end begin run{c}; run{c} end"
+```
+In this use case, the second block does not start properly.
+
+### Bottom Line: Adding error recovery to a parser is hard!
+
+The FParsec parser generator does not support in-built error recovery. However, it is possible to add one on your own. 
+
+Takeaways from the study:
+
+* No **"one-fits-all"**: You have to add new parser combinators to the repertoire of FParserc that highly depend on the requirements of your particular grammar.
+* **To fail or not to fail?**: Many FParsec parser combinators depend on whether input parsers fail or not. The most challenging part is to find a balance between allowing your parsers to fail or not to fail and emit diagnostics instead. The latter will affect the way FParsec standard parser combinators work. 
+* Your original grammar without error recovery will in a subtle way differ from the grammar after you add error recovery to it. 
+* Adding error recovery and debugging it when it doesn't work as expected is hard.

@@ -24,14 +24,6 @@ type Diagnostics () =
 
 let ad = Diagnostics() 
 
-/// A simple helper function for printing trace information to the console (taken from FParsec Docs)
-let (<!>) (p: Parser<_,_>) label : Parser<_,_> =
-    fun stream ->
-        printfn "%A: Entering %s" stream.Position label
-        let reply = p stream
-        printfn "%A: Leaving %s (%A)" stream.Position label reply.Status
-        reply
-
 /// Emit any errors occurring in the globalParser
 /// This is to make sure that the parser will always emit diagnostics, 
 /// even if the error recovery fails on a global level (and so does the parser).
@@ -66,17 +58,50 @@ let emitDiagnostics1 (ad:Diagnostics) (msg:string) pos =
     ad.AddDiagnostic diagnostic
     preturn ()
 
-
-/// A helper parser that skips any characters until innerSeparator would succeed,
-/// but where innerSeparator does not consume any input.
-let skipUntilLookaheadSeparator innerSeparator = 
-    skipMany (notFollowedBy innerSeparator >>. anyChar)
-
 /// A helper parser that skips any characters until innerSeparator would succeed,
 /// but where innerSeparator does not consume any input, 
 /// unless, at the same position, outerSeparator occurs.
 let skipUntilLookaheadSeparatorFail innerSeparator outerSeparator = 
     skipMany (notFollowedBy (attempt innerSeparator <|> outerSeparator) >>. anyChar)
+
+let abc a b c (aName:string) (bName:string) (cName:string) (ad:Diagnostics) =
+    let aMissing = 
+        getPosition >>= fun pos -> 
+        b .>> c >>= fun r -> 
+            emitDiagnostics1 ad ("missing opening " + aName) pos |> ignore
+            preturn r
+    let cMissing = 
+        getPosition >>= fun pos -> 
+        a >>. b >>= fun r -> 
+            emitDiagnostics1 ad ("missing closing " + cName) pos |> ignore
+            preturn r
+    let acMissing = 
+        getPosition >>= fun pos -> 
+        b >>= fun r -> 
+            emitDiagnostics1 ad ("missing opening " + aName) pos |> ignore
+            getPosition >>= fun pos -> 
+            emitDiagnostics1 ad ("missing closing " + cName) pos |> ignore
+            preturn r 
+    let bMissing = a >>. c >>% Ast.Empty 
+
+    attempt bMissing 
+    <|> (attempt (a >>. b .>> c) <|> cMissing)
+    <|> (attempt aMissing <|> acMissing)
+
+(*
+// Other parser combinators that might become useful for other grammars but proved unnecessary in this study:
+/// A simple helper function for printing trace information to the console (taken from FParsec Docs)
+let (<!>) (p: Parser<_,_>) label : Parser<_,_> =
+    fun stream ->
+        printfn "%A: Entering %s" stream.Position label
+        let reply = p stream
+        printfn "%A: Leaving %s (%A)" stream.Position label reply.Status
+        reply
+
+/// A helper parser that skips any characters until innerSeparator would succeed,
+/// but where innerSeparator does not consume any input.
+let skipUntilLookaheadSeparator innerSeparator = 
+    skipMany (notFollowedBy innerSeparator >>. anyChar)
 
 /// A helper parser that skips any characters until innerSeparator would succeed,
 /// but where innerSeparator does not consume any input, 
@@ -110,29 +135,4 @@ let tryParseOther p msg (ad:Diagnostics) =
             let diagnostic = Diagnostic (DiagnosticEmitter.Parser, DiagnosticSeverity.Error,restInput.Position,diagnosticMsg)
             ad.AddDiagnostic diagnostic
             preturn Ast.Error
-
-
-let abc a b c (aName:string) (bName:string) (cName:string) (ad:Diagnostics) =
-    let aMissing = 
-        getPosition >>= fun pos -> 
-        b .>> c >>= fun r -> 
-            emitDiagnostics1 ad ("missing opening " + aName) pos |> ignore
-            preturn r
-    let cMissing = 
-        getPosition >>= fun pos -> 
-        a >>. b >>= fun r -> 
-            emitDiagnostics1 ad ("missing closing " + cName) pos |> ignore
-            preturn r
-    let acMissing = 
-        getPosition >>= fun pos -> 
-        b >>= fun r -> 
-            emitDiagnostics1 ad ("missing opening " + aName) pos |> ignore
-            getPosition >>= fun pos -> 
-            emitDiagnostics1 ad ("missing closing " + cName) pos |> ignore
-            preturn r
-    let bMissing = a >>. c >>% Ast.Empty
-   
-    attempt bMissing <|> 
-    attempt (a >>. b .>> c) <|> cMissing
-    <|> (attempt aMissing <|> acMissing)
-
+*)
